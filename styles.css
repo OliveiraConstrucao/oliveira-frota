@@ -1812,3 +1812,161 @@ body.splash-lock{
     border-right:0!important;
   }
 }
+
+
+/* =========================================================
+   V31 — SEGURANÇA, VALIDAÇÃO, AUDITORIA E SISTEMA
+   ========================================================= */
+
+/* Administração protegida */
+.admin-lock-menu-card{
+  border:2px solid #d6c2a1;
+  background:#fff9ef;
+}
+.admin-lock-menu-card .admin-menu-icon{font-size:34px}
+.admin-security-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+.admin-pin-card{
+  width:min(420px,calc(100vw - 28px));
+  text-align:center;
+  padding:24px 20px 20px;
+}
+.admin-pin-icon{
+  width:70px;height:70px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;
+  background:#fff3dc;
+  font-size:34px;
+}
+.admin-pin-card h3{margin:5px 0 7px;font-size:24px}
+.admin-pin-card>p{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.45}
+.admin-pin-card .field{text-align:left}
+.admin-pin-card input{
+  min-height:52px;
+  text-align:center;
+  font-size:25px;
+  letter-spacing:.18em;
+  font-weight:900;
+}
+.admin-pin-error{
+  margin:9px 0;
+  padding:9px 10px;
+  border-radius:10px;
+  background:#fff0ee;
+  color:#8f2e2f;
+  font-size:12px;
+  font-weight:800;
+}
+
+/* Validação inteligente */
+.validation-card{
+  width:min(500px,calc(100vw - 26px));
+  text-align:center;
+  padding:22px 19px 18px;
+}
+.validation-icon{
+  width:68px;height:68px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 10px;
+  background:#fff1cf;font-size:33px;
+}
+.validation-card h3{margin:5px 0 7px;font-size:23px}
+.validation-card>p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.validation-issues{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:15px 0;
+  text-align:left;
+}
+.validation-issue{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr);
+  gap:9px;
+  align-items:start;
+  padding:10px 11px;
+  border:1px solid #ecd299;
+  border-radius:12px;
+  background:#fff8e7;
+}
+.validation-issue>span{
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:#c8922e;color:#fff;font-weight:900;
+}
+.validation-issue p{margin:1px 0 0;font-size:12px;line-height:1.45;color:#5f4b23}
+.validation-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+/* Auditoria */
+.audit-list{gap:10px}
+.audit-card{
+  background:#fff;
+  border:1px solid #e0e0dc;
+  border-radius:15px;
+  padding:14px;
+}
+.audit-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+.audit-card-head strong{font-size:15px;color:#333}
+.audit-card-head span{font-size:11px;color:var(--muted);white-space:nowrap}
+.audit-card p{margin:7px 0 8px;font-size:13px;line-height:1.45;color:#444}
+.audit-card-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 14px;
+  font-size:11px;
+  color:var(--muted);
+}
+
+/* Sistema */
+.system-menu-card{
+  border:2px solid #d5dde2;
+  background:#f8fbfc;
+}
+.system-hero{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:12px;
+}
+.system-hero h2{margin:4px 0 6px;font-size:29px}
+.system-hero p{margin:0;color:var(--muted)}
+.system-info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.system-info-card{
+  background:#fff;
+  border:1px solid #dededb;
+  border-radius:14px;
+  padding:13px;
+  min-width:0;
+}
+.system-info-card span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
+.system-info-card strong{display:block;margin-top:4px;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.system-update-btn{margin-top:12px}
+.system-note{margin:8px 2px 0;text-align:center;font-size:11px;color:var(--muted)}
+
+@media(max-width:560px){
+  .admin-security-actions{grid-template-columns:1fr}
+  .validation-actions{grid-template-columns:1fr}
+  .audit-card-head{display:block}
+  .audit-card-head span{display:block;margin-top:4px}
+  .system-info-grid{grid-template-columns:1fr 1fr}
+  .system-info-card{padding:11px}
+  .system-info-card strong{font-size:13px}
+}
+
+@media(max-width:360px){
+  .system-info-grid{grid-template-columns:1fr}
+}

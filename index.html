@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=31" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -213,10 +213,10 @@
             <strong>Histórico e PDF</strong>
             <small>Consultar registros e salvar relatório</small>
           </button>
-          <button class="admin-menu-card menu-feature-card" data-nav="admin" type="button">
-            <span class="admin-menu-icon">⚙️</span>
+          <button id="adminAccessBtn" class="admin-menu-card menu-feature-card admin-lock-menu-card" type="button">
+            <span class="admin-menu-icon">🔒</span>
             <strong>Administração</strong>
-            <small>Veículos, backup e nuvem</small>
+            <small>Área protegida da responsável</small>
           </button>
           <button class="admin-menu-card menu-feature-card manual-menu-card" data-nav="manual" type="button">
             <span class="admin-menu-icon">📖</span>
@@ -227,6 +227,11 @@
             <span class="admin-menu-icon">👤</span>
             <strong>Este aparelho</strong>
             <small id="deviceOwnerMenuLabel">Identificar usuário</small>
+          </button>
+          <button class="admin-menu-card menu-feature-card system-menu-card" data-nav="system" type="button">
+            <span class="admin-menu-icon">ℹ️</span>
+            <strong>Sistema</strong>
+            <small>Versão, sincronização e atualização</small>
           </button>
           <button id="menuInstallBtn" class="admin-menu-card menu-feature-card install-menu-card" type="button">
             <span class="admin-menu-icon">📲</span>
@@ -403,6 +408,46 @@
         </div>
       </section>
 
+      <section id="view-system" class="view" data-view="system">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
+        </div>
+
+        <div class="system-hero">
+          <span class="eyebrow">SISTEMA</span>
+          <h2>Informações do aplicativo</h2>
+          <p>Estado deste aparelho e da sincronização.</p>
+        </div>
+
+        <div class="system-info-grid">
+          <div class="system-info-card"><span>Versão</span><strong id="systemVersion">—</strong></div>
+          <div class="system-info-card"><span>Usuário deste aparelho</span><strong id="systemOwner">—</strong></div>
+          <div class="system-info-card"><span>Internet</span><strong id="systemInternet">—</strong></div>
+          <div class="system-info-card"><span>Sincronização</span><strong id="systemSyncStatus">—</strong></div>
+          <div class="system-info-card"><span>Pendentes</span><strong id="systemPending">0</strong></div>
+          <div class="system-info-card"><span>Última sincronização</span><strong id="systemLastSync">Nunca</strong></div>
+          <div class="system-info-card"><span>Nuvem</span><strong id="systemCloud">—</strong></div>
+          <div class="system-info-card"><span>Instalação</span><strong id="systemInstalled">—</strong></div>
+        </div>
+
+        <button id="systemCheckUpdateBtn" class="btn btn-primary btn-block system-update-btn" type="button">
+          Verificar atualização agora
+        </button>
+        <p class="system-note">O app já verifica atualizações automaticamente ao abrir com internet.</p>
+      </section>
+
+      <section id="view-audit" class="view" data-view="audit">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+        </div>
+        <div class="page-title-simple">
+          <span class="eyebrow">RASTREABILIDADE</span>
+          <h2>Histórico de alterações</h2>
+          <p class="page-subtext">Correções, exclusões e alterações administrativas ficam registradas aqui.</p>
+        </div>
+        <div id="auditList" class="stack-list audit-list"></div>
+      </section>
+
       <section id="view-admin" class="view" data-view="admin">
         <div class="page-head admin-subhead">
           <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
@@ -424,11 +469,21 @@
             <strong>Corrigir lançamentos</strong>
             <small>Editar, cancelar ou excluir</small>
           </button>
+          <button class="admin-menu-card" data-nav="audit" type="button">
+            <span class="admin-menu-icon">📝</span>
+            <strong>Histórico de alterações</strong>
+            <small>Ver quem alterou e o que mudou</small>
+          </button>
           <button id="dataBtn" class="admin-menu-card" type="button">
             <span class="admin-menu-icon">☁️</span>
             <strong>Dados e nuvem</strong>
             <small>Backup e sincronização</small>
           </button>
+        </div>
+
+        <div class="admin-security-actions">
+          <button id="changeAdminPinBtn" class="btn btn-secondary" type="button">Alterar PIN da Administração</button>
+          <button id="lockAdminBtn" class="btn btn-secondary" type="button">Bloquear Administração agora</button>
         </div>
 
         <div class="admin-install-row">
@@ -770,6 +825,49 @@
     </div>
   </dialog>
 
+  <dialog id="adminPinDialog" class="dialog admin-pin-dialog">
+    <form id="adminPinForm" class="dialog-card admin-pin-card" autocomplete="off">
+      <div class="admin-pin-icon">🔒</div>
+      <span class="eyebrow">ADMINISTRAÇÃO</span>
+      <h3 id="adminPinTitle">Acesso protegido</h3>
+      <p id="adminPinMessage">Digite o PIN da responsável.</p>
+
+      <label id="adminCurrentPinField" class="field">
+        <span id="adminCurrentPinLabel">PIN</span>
+        <input id="adminCurrentPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="••••" />
+      </label>
+
+      <label id="adminNewPinField" class="field hidden">
+        <span>Novo PIN</span>
+        <input id="adminNewPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="4 a 6 números" />
+      </label>
+
+      <label id="adminConfirmPinField" class="field hidden">
+        <span>Confirmar novo PIN</span>
+        <input id="adminConfirmPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="Repita o PIN" />
+      </label>
+
+      <div id="adminPinError" class="admin-pin-error hidden"></div>
+
+      <button id="adminPinSubmitBtn" type="submit" class="btn btn-primary btn-block">Entrar</button>
+      <button id="adminPinCancelBtn" type="button" class="btn btn-secondary btn-block">Cancelar</button>
+    </form>
+  </dialog>
+
+  <dialog id="fuelValidationDialog" class="dialog validation-dialog">
+    <div class="dialog-card validation-card">
+      <div class="validation-icon">⚠️</div>
+      <span class="eyebrow">CONFIRA OS DADOS</span>
+      <h3>Este lançamento está diferente do normal</h3>
+      <p>O app encontrou uma ou mais informações fora do padrão recente deste veículo.</p>
+      <div id="fuelValidationIssues" class="validation-issues"></div>
+      <div class="validation-actions">
+        <button id="fuelValidationBackBtn" class="btn btn-secondary" type="button">Voltar e corrigir</button>
+        <button id="fuelValidationSaveBtn" class="btn btn-primary" type="button">Salvar mesmo assim</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="deviceOwnerDialog" class="dialog device-owner-dialog">
     <form id="deviceOwnerForm" class="dialog-card device-owner-card" autocomplete="off">
       <div class="device-owner-icon">👤</div>
@@ -880,7 +978,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
-  <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=30" defer></script>
+  <script src="cloud-sync.js?v=31" defer></script>
+  <script src="app.js?v=31" defer></script>
 </body>
 </html>

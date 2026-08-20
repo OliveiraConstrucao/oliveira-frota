@@ -1,8 +1,10 @@
-const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', oilChanges: 'oliveira_frota_oil_changes_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
+const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', oilChanges: 'oliveira_frota_oil_changes_v1', auditLogs: 'oliveira_frota_audit_logs_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
 const DEVICE_OWNER_KEY='oliveira_frota_device_owner_v1';
 const DEVICE_ID_KEY='oliveira_frota_device_id_v1';
+const ADMIN_PIN_HASH_KEY='oliveira_frota_admin_pin_hash_v1';
+const ADMIN_UNLOCK_SESSION_KEY='oliveira_frota_admin_unlocked_v1';
 
-const state = { vehicles: [], records: [], oilChanges: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1, oilStep: 1 };
+const state = { vehicles: [], records: [], oilChanges: [], auditLogs: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1, oilStep: 1, pendingFuelRecord: null };
 
 const $ = (id) => document.getElementById(id);
 const todayISO = () => new Date().toISOString().slice(0,10);
@@ -56,10 +58,187 @@ function promptDeviceOwnerIfNeeded(){
 }
 
 
+
+function adminPinConfigured(){
+  return Boolean(localStorage.getItem(ADMIN_PIN_HASH_KEY));
+}
+function adminUnlocked(){
+  return sessionStorage.getItem(ADMIN_UNLOCK_SESSION_KEY)==='1';
+}
+function lockAdmin(){
+  sessionStorage.removeItem(ADMIN_UNLOCK_SESSION_KEY);
+}
+async function hashAdminPin(pin){
+  const value=String(pin||'');
+  if(crypto?.subtle){
+    const data=new TextEncoder().encode(`oliveira-frota:${value}`);
+    const digest=await crypto.subtle.digest('SHA-256',data);
+    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  let h=2166136261;
+  for(const ch of `oliveira-frota:${value}`){
+    h^=ch.charCodeAt(0);
+    h=Math.imul(h,16777619);
+  }
+  return `fallback-${(h>>>0).toString(16)}`;
+}
+function validAdminPin(pin){
+  return /^\d{4,6}$/.test(String(pin||''));
+}
+function addAudit(action,description,entityType='',entityId='',details={}){
+  const now=new Date().toISOString();
+  const log={
+    id:uuid(),
+    action,
+    description,
+    entityType,
+    entityId,
+    operator:deviceOwnerName() || 'Não identificado',
+    deviceId:deviceId(),
+    details,
+    createdAt:now,
+    updatedAt:now
+  };
+  state.auditLogs.push(log);
+  queueChange('auditLog',log.id);
+  return log;
+}
+function auditActionLabel(action=''){
+  const labels={
+    vehicle_create:'Veículo cadastrado',
+    vehicle_edit:'Veículo editado',
+    vehicle_archive:'Veículo arquivado',
+    vehicle_restore:'Veículo reativado',
+    vehicle_delete:'Veículo excluído',
+    record_edit:'Lançamento corrigido',
+    record_cancel:'Lançamento cancelado',
+    record_restore:'Lançamento reativado',
+    record_delete:'Lançamento excluído',
+    fuel_warning_override:'Alerta de validação confirmado',
+    pin_setup:'PIN criado',
+    pin_change:'PIN alterado',
+    test_data_clear:'Dados de teste limpos',
+    backup_restore:'Backup restaurado'
+  };
+  return labels[action] || action || 'Alteração';
+}
+function renderAudit(){
+  const box=$('auditList');
+  if(!box) return;
+  const list=state.auditLogs.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,150);
+  box.innerHTML=list.length?list.map(log=>`
+    <article class="audit-card">
+      <div class="audit-card-head">
+        <strong>${escapeHTML(auditActionLabel(log.action))}</strong>
+        <span>${escapeHTML(fmtDateTime(log.createdAt))}</span>
+      </div>
+      <p>${escapeHTML(log.description||'—')}</p>
+      <div class="audit-card-meta">
+        <span>Responsável: <b>${escapeHTML(recordOperator(log))}</b></span>
+        ${log.entityType?`<span>Tipo: <b>${escapeHTML(log.entityType)}</b></span>`:''}
+      </div>
+    </article>`).join(''):'<div class="empty">Nenhuma alteração administrativa registrada ainda.</div>';
+}
+
+let adminPinTarget='admin';
+let adminPinMode='unlock';
+function setAdminPinError(message=''){
+  const el=$('adminPinError');
+  if(!el) return;
+  el.textContent=message;
+  el.classList.toggle('hidden',!message);
+}
+function configureAdminPinDialog(mode='unlock',target='admin'){
+  adminPinMode=mode;
+  adminPinTarget=target;
+  setAdminPinError('');
+  $('adminPinForm')?.reset();
+
+  const currentField=$('adminCurrentPinField');
+  const newField=$('adminNewPinField');
+  const confirmField=$('adminConfirmPinField');
+
+  if(mode==='setup'){
+    $('adminPinTitle').textContent='Criar PIN da Administração';
+    $('adminPinMessage').textContent='Crie um PIN de 4 a 6 números para proteger alterações e configurações.';
+    $('adminCurrentPinLabel').textContent='Novo PIN';
+    currentField.classList.remove('hidden');
+    newField.classList.add('hidden');
+    confirmField.classList.remove('hidden');
+    $('adminPinSubmitBtn').textContent='Criar PIN e entrar';
+  }else if(mode==='change'){
+    $('adminPinTitle').textContent='Alterar PIN';
+    $('adminPinMessage').textContent='Digite o PIN atual e escolha um novo PIN de 4 a 6 números.';
+    $('adminCurrentPinLabel').textContent='PIN atual';
+    currentField.classList.remove('hidden');
+    newField.classList.remove('hidden');
+    confirmField.classList.remove('hidden');
+    $('adminPinSubmitBtn').textContent='Salvar novo PIN';
+  }else{
+    $('adminPinTitle').textContent='Acesso à Administração';
+    $('adminPinMessage').textContent='Digite o PIN da responsável para continuar.';
+    $('adminCurrentPinLabel').textContent='PIN';
+    currentField.classList.remove('hidden');
+    newField.classList.add('hidden');
+    confirmField.classList.add('hidden');
+    $('adminPinSubmitBtn').textContent='Entrar';
+  }
+
+  const dlg=$('adminPinDialog');
+  if(dlg && !dlg.open) dlg.showModal();
+  setTimeout(()=>$('adminCurrentPin')?.focus(),120);
+}
+function requestAdminAccess(target='admin'){
+  if(adminUnlocked()){
+    nav(target);
+    return;
+  }
+  configureAdminPinDialog(adminPinConfigured()?'unlock':'setup',target);
+}
+async function submitAdminPin(){
+  setAdminPinError('');
+  const current=$('adminCurrentPin').value.trim();
+  const confirm=$('adminConfirmPin').value.trim();
+  const newPin=$('adminNewPin').value.trim();
+
+  if(adminPinMode==='setup'){
+    if(!validAdminPin(current)) return setAdminPinError('Use um PIN com 4 a 6 números.');
+    if(current!==confirm) return setAdminPinError('A confirmação do PIN não confere.');
+    localStorage.setItem(ADMIN_PIN_HASH_KEY,await hashAdminPin(current));
+    sessionStorage.setItem(ADMIN_UNLOCK_SESSION_KEY,'1');
+    $('adminPinDialog').close();
+    addAudit('pin_setup','PIN da Administração criado neste aparelho.','system','admin-pin');
+    nav(adminPinTarget);
+    showToast('PIN criado. Administração liberada.');
+    return;
+  }
+
+  const stored=localStorage.getItem(ADMIN_PIN_HASH_KEY)||'';
+  if(!validAdminPin(current) || await hashAdminPin(current)!==stored){
+    return setAdminPinError('PIN incorreto.');
+  }
+
+  if(adminPinMode==='change'){
+    if(!validAdminPin(newPin)) return setAdminPinError('O novo PIN deve ter 4 a 6 números.');
+    if(newPin!==confirm) return setAdminPinError('A confirmação do novo PIN não confere.');
+    localStorage.setItem(ADMIN_PIN_HASH_KEY,await hashAdminPin(newPin));
+    sessionStorage.setItem(ADMIN_UNLOCK_SESSION_KEY,'1');
+    $('adminPinDialog').close();
+    addAudit('pin_change','PIN da Administração alterado.','system','admin-pin');
+    showToast('PIN alterado.');
+    return;
+  }
+
+  sessionStorage.setItem(ADMIN_UNLOCK_SESSION_KEY,'1');
+  $('adminPinDialog').close();
+  nav(adminPinTarget);
+}
+
 function load(){
   try { state.vehicles = JSON.parse(localStorage.getItem(KEYS.vehicles)) || []; } catch { state.vehicles = []; }
   try { state.records = JSON.parse(localStorage.getItem(KEYS.records)) || []; } catch { state.records = []; }
   try { state.oilChanges = JSON.parse(localStorage.getItem(KEYS.oilChanges)) || []; } catch { state.oilChanges = []; }
+  try { state.auditLogs = JSON.parse(localStorage.getItem(KEYS.auditLogs)) || []; } catch { state.auditLogs = []; }
   try { state.syncQueue = JSON.parse(localStorage.getItem(KEYS.queue)) || []; } catch { state.syncQueue = []; }
   try { state.meta = JSON.parse(localStorage.getItem(KEYS.meta)) || {}; } catch { state.meta = {}; }
 }
@@ -181,6 +360,7 @@ function save(){
   localStorage.setItem(KEYS.vehicles, JSON.stringify(state.vehicles));
   localStorage.setItem(KEYS.records, JSON.stringify(state.records));
   localStorage.setItem(KEYS.oilChanges, JSON.stringify(state.oilChanges));
+  localStorage.setItem(KEYS.auditLogs, JSON.stringify(state.auditLogs));
   localStorage.setItem(KEYS.queue, JSON.stringify(state.syncQueue));
   localStorage.setItem(KEYS.meta, JSON.stringify(state.meta));
 }
@@ -192,7 +372,9 @@ function queueChange(entityType, entityId){
       ? state.records.find(r=>r.id===entityId)
       : entityType==='oilChange'
         ? state.oilChanges.find(r=>r.id===entityId)
-        : null;
+        : entityType==='auditLog'
+          ? state.auditLogs.find(r=>r.id===entityId)
+          : null;
   if(target) target.updatedAt=now;
   state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===entityId));
   state.syncQueue.push({id:uuid(),entityType,entityId,updatedAt:now});
@@ -289,7 +471,8 @@ function showToast(msg){
   },3200);
 }
 
-const APP_VIEWS=['home','record','menu','manual','admin','vehicles','vehicle-detail','corrections','history','oil','oil-record'];
+const APP_VIEWS=['home','record','menu','manual','system','admin','vehicles','vehicle-detail','corrections','audit','history','oil','oil-record'];
+const PROTECTED_VIEWS=['admin','vehicles','vehicle-detail','corrections','audit'];
 
 function activeView(){
   return document.querySelector('.view.active')?.dataset.view || 'home';
@@ -303,6 +486,8 @@ function applyView(view){
   if(view==='vehicles') renderVehicles();
   if(view==='history') renderHistory();
   if(view==='corrections') renderCorrections();
+  if(view==='audit') renderAudit();
+  if(view==='system') renderSystemInfo();
   if(view==='oil') renderOil();
   if(view==='home') renderHome();
   if(view==='admin' || view==='menu') updateSyncUI();
@@ -365,12 +550,24 @@ window.addEventListener('popstate',e=>{
     return;
   }
 
-  applyView(APP_VIEWS.includes(target)?target:'home');
+  const next=APP_VIEWS.includes(target)?target:'home';
+  if(PROTECTED_VIEWS.includes(next) && !adminUnlocked()){
+    applyView('menu');
+    setTimeout(()=>requestAdminAccess(next),80);
+    return;
+  }
+  applyView(next);
 });
 
 document.addEventListener('click', e=>{
   const btn=e.target.closest('[data-nav]');
-  if(btn) nav(btn.dataset.nav);
+  if(!btn) return;
+  const target=btn.dataset.nav;
+  if(PROTECTED_VIEWS.includes(target) && !adminUnlocked()){
+    requestAdminAccess(target);
+    return;
+  }
+  nav(target);
 });
 
 
@@ -607,12 +804,84 @@ $('successAgainBtn')?.addEventListener('click',()=>{
   nav('record');
 });
 
+function median(values){
+  const nums=values.map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
+  if(!nums.length) return null;
+  const mid=Math.floor(nums.length/2);
+  return nums.length%2?nums[mid]:(nums[mid-1]+nums[mid])/2;
+}
+function analyzeFuelEntry(v,odo,liters,consumption){
+  const issues=[];
+  const history=vehicleRecords(v.id).slice(0,10);
+  const prev=history[0];
+
+  if(history.length>=3){
+    const litersMedian=median(history.map(r=>r.liters).filter(x=>Number(x)>0));
+    if(litersMedian && (liters>litersMedian*1.8 || liters<litersMedian*0.35)){
+      issues.push(`Litros informados (${liters.toLocaleString('pt-BR',{maximumFractionDigits:2})} L) estão bem diferentes do padrão recente, próximo de ${litersMedian.toLocaleString('pt-BR',{maximumFractionDigits:2})} L.`);
+    }
+
+    const consumptionMedian=median(history.map(r=>consumptionNumber(r.quantity)).filter(x=>x && x>0));
+    if(consumption!==null && consumptionMedian && (consumption>consumptionMedian*1.75 || consumption<consumptionMedian*0.55)){
+      issues.push(`Consumo calculado (${consumption.toLocaleString('pt-BR',{maximumFractionDigits:2})} km/l) está bem diferente da média recente, próxima de ${consumptionMedian.toLocaleString('pt-BR',{maximumFractionDigits:2})} km/l.`);
+    }
+
+    const chronological=history.slice().sort((a,b)=>(a.date+(a.createdAt||'')).localeCompare(b.date+(b.createdAt||'')));
+    const distances=[];
+    for(let i=1;i<chronological.length;i++){
+      const d=Number(chronological[i].odometer)-Number(chronological[i-1].odometer);
+      if(d>0) distances.push(d);
+    }
+    const distanceMedian=median(distances);
+    const currentDistance=prev?odo-Number(prev.odometer):null;
+    if(distanceMedian && currentDistance>0 && currentDistance>distanceMedian*2.5){
+      issues.push(`A diferença de KM desde o último abastecimento (${currentDistance.toLocaleString('pt-BR')} km) está muito acima do padrão recente, próximo de ${distanceMedian.toLocaleString('pt-BR')} km.`);
+    }
+  }
+  return issues;
+}
+function finalizeFuelRecord(v,record,{warningIssues=[]}={}){
+  state.records.push(record);
+  queueChange('record',record.id);
+  if(warningIssues.length){
+    addAudit(
+      'fuel_warning_override',
+      `Abastecimento de ${v.name} (${v.plate}) foi salvo mesmo com ${warningIssues.length} alerta(s) de validação.`,
+      'record',
+      record.id,
+      {warnings:warningIssues}
+    );
+  }
+  state.currentVehicleId=v.id;
+  renderHome();
+  showRecordSuccess(v,record);
+  $('recordForm').reset();
+  prepRecord();
+}
+function openFuelValidationDialog(issues,payload){
+  state.pendingFuelRecord={...payload,warningIssues:issues};
+  $('fuelValidationIssues').innerHTML=issues.map(i=>`<div class="validation-issue"><span>!</span><p>${escapeHTML(i)}</p></div>`).join('');
+  $('fuelValidationDialog').showModal();
+}
+$('fuelValidationBackBtn')?.addEventListener('click',()=>{
+  state.pendingFuelRecord=null;
+  $('fuelValidationDialog').close();
+});
+$('fuelValidationSaveBtn')?.addEventListener('click',()=>{
+  const pending=state.pendingFuelRecord;
+  if(!pending) return $('fuelValidationDialog').close();
+  state.pendingFuelRecord=null;
+  $('fuelValidationDialog').close();
+  finalizeFuelRecord(pending.v,pending.record,{warningIssues:pending.warningIssues});
+});
+
 $('recordForm').addEventListener('submit',e=>{
   e.preventDefault();
   const v=getVehicle($('recordVehicle').value); if(!v) return showToast('Selecione um veículo.');
   const odo=Number($('recordOdometer').value);
   const liters=Number($('recordLiters').value);
   const prev=lastRecord(v.id);
+  if(!Number.isFinite(odo) || odo<0) return showToast('Confira o odômetro.');
   if(!Number.isFinite(liters) || liters<=0) return showToast('Informe os litros abastecidos.');
   if(prev && odo <= Number(prev.odometer)) return showToast('O odômetro deve ser maior que o último registro.');
   const consumption=updateConsumption();
@@ -624,13 +893,12 @@ $('recordForm').addEventListener('submit',e=>{
     oil:oilRef?.nextOdometer || '', operator:deviceOwnerName() || 'Não identificado', deviceId:deviceId(),
     createdAt:now, updatedAt:now
   };
-  state.records.push(record);
-  queueChange('record',record.id);
-  state.currentVehicleId=v.id;
-  renderHome();
-  showRecordSuccess(v,record);
-  e.target.reset();
-  prepRecord();
+  const issues=analyzeFuelEntry(v,odo,liters,consumption);
+  if(issues.length){
+    openFuelValidationDialog(issues,{v,record});
+    return;
+  }
+  finalizeFuelRecord(v,record);
 });
 
 function renderVehicles(){
@@ -714,6 +982,7 @@ $('vehicleForm').addEventListener('submit',e=>{
   if(id){
     const v=getVehicle(id);
     if(!v || v.deletedAt) return;
+    const before={name:v.name,plate:v.plate,odometer:currentVehicleOdometer(v.id)};
     const oldName=v.name, oldPlate=v.plate;
     v.name=name; v.plate=plate; v.updatedAt=now;
     if(odoRaw!==''){
@@ -732,6 +1001,13 @@ $('vehicleForm').addEventListener('submit',e=>{
         o.vehicle=name; o.plate=plate; o.updatedAt=now; queueChange('oilChange',o.id);
       }
     }
+    addAudit(
+      'vehicle_edit',
+      `Veículo ${oldName} (${oldPlate}) atualizado para ${name} (${plate}).`,
+      'vehicle',
+      v.id,
+      {before,after:{name,plate,odometer:currentVehicleOdometer(v.id)}}
+    );
     showToast('Veículo atualizado.');
   }else{
     const vehicle={id:uuid(),name,plate,createdAt:now,updatedAt:now};
@@ -743,6 +1019,7 @@ $('vehicleForm').addEventListener('submit',e=>{
     }
     state.vehicles.push(vehicle);
     queueChange('vehicle',vehicle.id);
+    addAudit('vehicle_create',`Veículo ${name} (${plate}) cadastrado.`,'vehicle',vehicle.id,{name,plate,odometer:vehicle.manualOdometer??null});
     showToast('Veículo cadastrado.');
   }
   $('vehicleDialog').close();
@@ -764,12 +1041,14 @@ document.addEventListener('click',e=>{
       v.archivedAt=null;
       v.updatedAt=now;
       queueChange('vehicle',v.id);
+      addAudit('vehicle_restore',`Veículo ${v.name} (${v.plate}) reativado.`,'vehicle',v.id);
       showToast('Veículo reativado.');
     }else{
       if(!confirm(`Arquivar ${v.name} (${v.plate})? Ele deixará de aparecer nos lançamentos, mas o histórico será preservado.`)) return;
       v.archivedAt=now;
       v.updatedAt=now;
       queueChange('vehicle',v.id);
+      addAudit('vehicle_archive',`Veículo ${v.name} (${v.plate}) arquivado.`,'vehicle',v.id);
       showToast('Veículo arquivado.');
     }
     refreshAllViews();
@@ -786,6 +1065,7 @@ document.addEventListener('click',e=>{
     if(!confirm(msg)) return;
     const now=new Date().toISOString();
     v.deletedAt=now; v.updatedAt=now; queueChange('vehicle',v.id);
+    addAudit('vehicle_delete',`Veículo ${v.name} (${v.plate}) excluído da frota. O histórico vinculado foi preservado.`,'vehicle',v.id);
     refreshAllViews();
     showToast('Veículo excluído da frota.');
   }
@@ -912,6 +1192,7 @@ $('recordEditForm')?.addEventListener('submit',e=>{
   if(!Number.isFinite(liters) || liters<=0) return showToast('Confira os litros.');
   if(!date) return showToast('Informe a data.');
 
+  const before={vehicle:r.vehicle,plate:r.plate,date:r.date,odometer:r.odometer,liters:r.liters,quantity:r.quantity};
   const oldVehicleId=r.vehicleId;
   const now=new Date().toISOString();
   r.vehicleId=newVehicle.id;
@@ -925,6 +1206,13 @@ $('recordEditForm')?.addEventListener('submit',e=>{
 
   recalcVehicleConsumptions(oldVehicleId);
   if(newVehicle.id!==oldVehicleId) recalcVehicleConsumptions(newVehicle.id);
+  addAudit(
+    'record_edit',
+    `Lançamento de ${before.vehicle} em ${fmtDate(before.date)} foi corrigido.`,
+    'record',
+    r.id,
+    {before,after:{vehicle:r.vehicle,plate:r.plate,date:r.date,odometer:r.odometer,liters:r.liters,quantity:r.quantity}}
+  );
 
   $('recordEditDialog').close();
   refreshAllViews();
@@ -946,6 +1234,7 @@ document.addEventListener('click',e=>{
       r.updatedAt=now;
       queueChange('record',r.id);
       recalcVehicleConsumptions(r.vehicleId);
+      addAudit('record_restore',`Lançamento de ${r.vehicle} em ${fmtDate(r.date)} reativado.`,'record',r.id);
       showToast('Lançamento reativado.');
     }else{
       if(!confirm(`Cancelar o lançamento de ${r.vehicle} em ${fmtDate(r.date)}? Ele deixará de contar no histórico, consumo e PDF.`)) return;
@@ -953,6 +1242,7 @@ document.addEventListener('click',e=>{
       r.updatedAt=now;
       queueChange('record',r.id);
       recalcVehicleConsumptions(r.vehicleId);
+      addAudit('record_cancel',`Lançamento de ${r.vehicle} em ${fmtDate(r.date)} cancelado.`,'record',r.id);
       showToast('Lançamento cancelado.');
     }
     refreshAllViews(); renderCorrections();
@@ -967,6 +1257,7 @@ document.addEventListener('click',e=>{
     const now=new Date().toISOString();
     r.deletedAt=now; r.updatedAt=now; queueChange('record',r.id);
     recalcVehicleConsumptions(r.vehicleId);
+    addAudit('record_delete',`Lançamento de ${r.vehicle} em ${fmtDate(r.date)} excluído.`,'record',r.id);
     refreshAllViews(); renderCorrections();
     showToast('Lançamento excluído.');
   }
@@ -1150,6 +1441,55 @@ function cloudAuthenticated(){
 function cloudAuthInfo(){
   try{return window.OLIVEIRA_CLOUD_ADAPTER?.getAuthInfo?.() || {};}catch{return {};}
 }
+
+function systemSyncLabel(){
+  if(!navigator.onLine) return 'Offline';
+  if(!cloudConfigured()) return 'Nuvem não configurada';
+  if(!cloudAuthenticated()) return 'Login da nuvem necessário';
+  if(state.syncing) return 'Sincronizando...';
+  if(state.syncQueue.length) return `${state.syncQueue.length} pendente(s)`;
+  return 'Sincronizado';
+}
+function renderSystemInfo(){
+  if($('systemVersion')) $('systemVersion').textContent=`V${OLIVEIRA_APP_VERSION}`;
+  if($('systemOwner')) $('systemOwner').textContent=deviceOwnerName() || 'Não identificado';
+  if($('systemInternet')) $('systemInternet').textContent=navigator.onLine?'Online':'Offline';
+  if($('systemSyncStatus')) $('systemSyncStatus').textContent=systemSyncLabel();
+  if($('systemPending')) $('systemPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
+  if($('systemLastSync')) $('systemLastSync').textContent=fmtDateTime(state.meta.lastSyncAt);
+  if($('systemCloud')) $('systemCloud').textContent=!cloudConfigured()?'Não configurada':cloudAuthenticated()?'Conectada':'Login necessário';
+  if($('systemInstalled')) $('systemInstalled').textContent=isStandaloneApp()?'Instalado':'Aberto no navegador';
+}
+async function checkAppUpdateNow(){
+  if(!navigator.onLine) return showToast('Conecte o aparelho à internet para verificar atualizações.');
+  const btn=$('systemCheckUpdateBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
+  try{
+    const registration=window.OLIVEIRA_SW_REGISTRATION || await navigator.serviceWorker?.getRegistration?.();
+    if(!registration){
+      showToast('Não foi possível acessar o atualizador neste navegador.');
+      return;
+    }
+    let found=false;
+    const onFound=()=>{ found=true; };
+    registration.addEventListener('updatefound',onFound,{once:true});
+    await registration.update();
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    if(registration.waiting){
+      registration.waiting.postMessage({type:'SKIP_WAITING'});
+      showToast('Atualização encontrada. Aplicando...');
+    }else if(!found){
+      showToast(`Você já está usando a versão V${OLIVEIRA_APP_VERSION}.`);
+    }
+  }catch(err){
+    console.error(err);
+    showToast('Não foi possível verificar a atualização agora.');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Verificar atualização agora'; }
+  }
+}
+$('systemCheckUpdateBtn')?.addEventListener('click',checkAppUpdateNow);
+
 function updateSyncUI(){
   const online=navigator.onLine;
   const configured=cloudConfigured();
@@ -1179,14 +1519,15 @@ function updateSyncUI(){
     else msg='Dados locais e nuvem estão sincronizados.';
     $('syncNotice').textContent=msg;
   }
+  renderSystemInfo();
 }
 function refreshAllViews(){
-  renderHome(); renderVehicles(); renderHistory(); renderCorrections(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||''); renderOilVehicleOptions($('oilVehicle')?.value||'');
+  renderHome(); renderVehicles(); renderHistory(); renderCorrections(); renderAudit(); renderOil(); renderSystemInfo(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||''); renderOilVehicleOptions($('oilVehicle')?.value||'');
 }
 function exportBackup(){
   const backup={
     app:'Oliveira Frota', backupVersion:1, exportedAt:new Date().toISOString(),
-    vehicles:state.vehicles, records:state.records, oilChanges:state.oilChanges
+    vehicles:state.vehicles, records:state.records, oilChanges:state.oilChanges, auditLogs:state.auditLogs
   };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1198,7 +1539,7 @@ function exportBackup(){
   state.meta.lastBackupAt=new Date().toISOString(); save(); updateSyncUI(); showToast('Backup salvo com sucesso.');
 }
 function validBackup(data){
-  return data && Array.isArray(data.vehicles) && Array.isArray(data.records) && (data.oilChanges===undefined || Array.isArray(data.oilChanges));
+  return data && Array.isArray(data.vehicles) && Array.isArray(data.records) && (data.oilChanges===undefined || Array.isArray(data.oilChanges)) && (data.auditLogs===undefined || Array.isArray(data.auditLogs));
 }
 async function importBackup(file){
   try{
@@ -1210,9 +1551,12 @@ async function importBackup(file){
     state.vehicles=data.vehicles.map(v=>({...v,updatedAt:v.updatedAt||v.createdAt||now}));
     state.records=data.records.map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
     state.oilChanges=(data.oilChanges||[]).map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
+    state.auditLogs=(data.auditLogs||[]).map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
     state.syncQueue=[{id:uuid(),entityType:'snapshot',entityId:'all',updatedAt:now}];
     state.meta.lastRestoreAt=new Date().toISOString(); state.meta.lastLocalChange=state.meta.lastRestoreAt;
-    save(); refreshAllViews(); updateSyncUI(); showToast('Backup restaurado.');
+    save();
+    addAudit('backup_restore',`Backup restaurado com ${state.vehicles.length} veículo(s), ${state.records.length} abastecimento(s) e ${state.oilChanges.length} troca(s) de óleo.`,'system','backup');
+    refreshAllViews(); updateSyncUI(); showToast('Backup restaurado.');
     if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),100);
   }catch(err){ console.error(err); showToast('Não foi possível restaurar o backup.'); }
 }
@@ -1231,10 +1575,11 @@ async function attemptCloudSync(manual=false){
   if(state.syncing) return false;
   state.syncing=true; updateSyncUI();
   try{
-    const result=await adapter.sync({vehicles:state.vehicles,records:state.records,oilChanges:state.oilChanges,queue:state.syncQueue,meta:state.meta});
+    const result=await adapter.sync({vehicles:state.vehicles,records:state.records,oilChanges:state.oilChanges,auditLogs:state.auditLogs,queue:state.syncQueue,meta:state.meta});
     if(result?.vehicles && Array.isArray(result.vehicles)) state.vehicles=result.vehicles;
     if(result?.records && Array.isArray(result.records)) state.records=result.records;
     if(result?.oilChanges && Array.isArray(result.oilChanges)) state.oilChanges=result.oilChanges;
+    if(result?.auditLogs && Array.isArray(result.auditLogs)) state.auditLogs=result.auditLogs;
     state.syncQueue=[]; state.meta.lastSyncAt=new Date().toISOString(); save(); refreshAllViews();
     if(manual) showToast('Sincronização concluída.');
     return true;
@@ -1430,6 +1775,7 @@ async function clearTestData(){
   refreshAllViews();
   updateSyncUI();
 
+  addAudit('test_data_clear',`Limpeza de dados de teste executada: ${vehicleCount} veículo(s), ${recordCount} abastecimento(s) e ${oilCount} troca(s) de óleo removidos da operação.`,'system','test-cleanup',{vehicleCount,recordCount,oilCount});
   const cloudOk=await attemptCloudSync(false);
   if(cloudOk){
     showToast('Dados de teste limpos. O app está pronto para os veículos reais.');
@@ -1442,6 +1788,16 @@ $('clearTestDataBtn')?.addEventListener('click',clearTestData);
 window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
+
+$('adminAccessBtn')?.addEventListener('click',()=>requestAdminAccess('admin'));
+$('adminPinCancelBtn')?.addEventListener('click',()=>$('adminPinDialog')?.close());
+$('adminPinForm')?.addEventListener('submit',async e=>{ e.preventDefault(); await submitAdminPin(); });
+$('changeAdminPinBtn')?.addEventListener('click',()=>configureAdminPinDialog('change','admin'));
+$('lockAdminBtn')?.addEventListener('click',()=>{
+  lockAdmin();
+  nav('menu');
+  showToast('Administração bloqueada.');
+});
 
 $('deviceOwnerMenuBtn')?.addEventListener('click',()=>openDeviceOwnerDialog({required:false}));
 $('deviceOwnerCancelBtn')?.addEventListener('click',()=>$('deviceOwnerDialog')?.close());
@@ -1616,7 +1972,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='30';
+const OLIVEIRA_APP_VERSION='31';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
@@ -1637,6 +1993,7 @@ function registerAutoUpdatingServiceWorker(){
         `service-worker.js?v=${OLIVEIRA_APP_VERSION}`,
         {updateViaCache:'none'}
       );
+      window.OLIVEIRA_SW_REGISTRATION=registration;
 
       const activateWorker=worker=>{
         if(!worker) return;
@@ -1694,7 +2051,10 @@ if(!ownerRequired) offerInstallOnFirstVisit();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
 const initialHash=location.hash.replace('#','');
-const initialView=APP_VIEWS.includes(initialHash)?initialHash:'home';
+let initialView=APP_VIEWS.includes(initialHash)?initialHash:'home';
+const protectedInitial=PROTECTED_VIEWS.includes(initialView) && !adminUnlocked();
+const requestedProtectedView=protectedInitial?initialView:null;
+if(protectedInitial) initialView='menu';
 
 // Mantém uma entrada-base e uma entrada ativa do app.
 // A entrada-base permite que o botão Voltar feche um modal aberto na tela inicial
@@ -1702,6 +2062,7 @@ const initialView=APP_VIEWS.includes(initialHash)?initialHash:'home';
 history.replaceState({oliveiraView:initialView,oliveiraBase:true},'',`#${initialView}`);
 applyView(initialView);
 history.pushState({oliveiraView:initialView,oliveiraGuard:true},'',`#${initialView}`);
+if(requestedProtectedView) setTimeout(()=>requestAdminAccess(requestedProtectedView),2200);
 
 // ===== Relatório em PDF por período =====
 function monthStartISO(){
