@@ -1,0 +1,62 @@
+OLIVEIRA FROTA — ATIVAÇÃO DA SINCRONIZAÇÃO FIREBASE
+
+O app já está pronto para:
+- continuar funcionando offline;
+- salvar alterações no aparelho;
+- entrar com conta Firebase;
+- enviar alterações pendentes quando a internet voltar;
+- baixar registros criados em outros celulares;
+- sincronizar automaticamente a cada 60 segundos enquanto estiver online;
+- manter backup manual em JSON.
+
+PARA ATIVAR A NUVEM:
+
+1. Crie um projeto no Firebase Console.
+   Nome sugerido: Oliveira Frota
+
+2. No projeto, adicione um APP WEB.
+   O Firebase exibirá uma configuração parecida com:
+   apiKey: "..."
+   projectId: "..."
+
+3. Abra o arquivo:
+   firebase-config.js
+
+   Preencha somente:
+   apiKey
+   projectId
+
+   Não altere:
+   fleetId: "oliveira-frota"
+
+4. No Firebase:
+   Authentication > Sign-in method > Email/Password
+   Ative Email/Password.
+
+5. Em Authentication > Users:
+   crie pelo menos um usuário com e-mail e senha.
+   Essa conta será usada no botão Dados > Firebase do app.
+   Para a primeira versão, os celulares podem usar a mesma conta.
+
+6. Crie o Firestore Database em modo Production.
+
+7. Vá em Firestore Database > Rules.
+   Copie o conteúdo do arquivo firestore.rules deste pacote,
+   publique as regras.
+
+8. Envie TODOS os arquivos deste pacote para o GitHub,
+   substituindo os atuais.
+
+9. Abra o app:
+   Dados > Firebase
+   entre com o e-mail e senha criados no passo 5.
+
+10. Em cada outro celular:
+    abra/instale o app, vá em Dados e entre na mesma conta.
+    A frota e os registros serão sincronizados.
+
+IMPORTANTE
+- O app continua funcionando sem internet.
+- A sincronização só ocorre quando a conexão volta.
+- A senha NÃO é gravada pelo app; após o login é mantido um token de sessão.
+- Faça um backup JSON antes da primeira ativação da nuvem.

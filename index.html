@@ -212,17 +212,48 @@
 
       <div id="syncNotice" class="sync-notice"></div>
 
+      <section class="cloud-auth-card" aria-labelledby="cloudAuthTitle">
+        <div class="cloud-auth-head">
+          <div>
+            <span class="eyebrow">NUVEM</span>
+            <h4 id="cloudAuthTitle">Firebase</h4>
+          </div>
+          <span id="cloudAccountBadge" class="cloud-account-badge">Desconectado</span>
+        </div>
+
+        <form id="cloudLoginForm" class="cloud-login-form" autocomplete="on">
+          <label class="field">
+            <span>E-mail</span>
+            <input id="cloudEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required />
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Senha do Firebase" required />
+          </label>
+          <button id="cloudLoginBtn" class="btn btn-primary" type="submit">Conectar nuvem</button>
+        </form>
+
+        <div id="cloudLoggedArea" class="cloud-logged-area hidden">
+          <div>
+            <span class="muted">Conta conectada</span>
+            <strong id="cloudLoggedEmail">—</strong>
+          </div>
+          <button id="cloudLogoutBtn" class="btn btn-secondary" type="button">Sair da nuvem</button>
+        </div>
+      </section>
+
       <div class="data-actions">
         <button id="exportBackupBtn" class="btn btn-primary" type="button">Exportar backup</button>
         <button id="importBackupBtn" class="btn btn-secondary" type="button">Restaurar backup</button>
         <button id="syncNowBtn" class="btn btn-secondary" type="button">Sincronizar agora</button>
       </div>
       <input id="importBackupFile" type="file" accept="application/json,.json" class="hidden" />
-      <p class="dialog-note">O app continua funcionando sem internet. Os registros são salvos neste aparelho. A sincronização entre vários celulares será ativada quando o Firebase for conectado.</p>
+      <p class="dialog-note">O app continua funcionando sem internet. Quando o Firebase estiver configurado e a conta estiver conectada, as alterações pendentes serão sincronizadas automaticamente ao voltar a internet.</p>
     </div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="firebase-config.js" defer></script>
   <script src="cloud-sync.js" defer></script>
   <script src="app.js" defer></script>
 </body>

@@ -26,6 +26,12 @@ function save(){
 }
 function queueChange(entityType, entityId){
   const now=new Date().toISOString();
+  const target = entityType==='vehicle'
+    ? state.vehicles.find(v=>v.id===entityId)
+    : entityType==='record'
+      ? state.records.find(r=>r.id===entityId)
+      : null;
+  if(target) target.updatedAt=now;
   state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===entityId));
   state.syncQueue.push({id:uuid(),entityType,entityId,updatedAt:now});
   state.meta.lastLocalChange=now;
@@ -149,7 +155,7 @@ $('recordForm').addEventListener('submit',e=>{
   const record={
     id:uuid(), vehicleId:v.id, vehicle:v.name, plate:v.plate,
     odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value,
-    oil:Number($('recordOil').value), createdAt:new Date().toISOString()
+    oil:Number($('recordOil').value), createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
   };
   state.records.push(record);
   queueChange('record',record.id); e.target.reset(); state.currentVehicleId=v.id;
@@ -192,7 +198,8 @@ $('closeVehicleDialog').addEventListener('click',()=>$('vehicleDialog').close())
 $('vehicleForm').addEventListener('submit',e=>{
   e.preventDefault(); const name=$('vehicleName').value.trim(), plate=$('vehiclePlate').value.trim().toUpperCase();
   if(state.vehicles.some(v=>v.plate.toUpperCase()===plate)) return showToast('Já existe um veículo com essa placa.');
-  const vehicle={id:uuid(),name,plate}; state.vehicles.push(vehicle); queueChange('vehicle',vehicle.id); $('vehicleDialog').close(); e.target.reset(); renderVehicles(); renderHome(); showToast('Veículo cadastrado.');
+  const now=new Date().toISOString();
+  const vehicle={id:uuid(),name,plate,createdAt:now,updatedAt:now}; state.vehicles.push(vehicle); queueChange('vehicle',vehicle.id); $('vehicleDialog').close(); e.target.reset(); renderVehicles(); renderHome(); showToast('Veículo cadastrado.');
 });
 $('vehiclePlate').addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
 
@@ -226,19 +233,36 @@ function fmtDateTime(iso){
 function cloudConfigured(){
   try{return Boolean(window.OLIVEIRA_CLOUD_ADAPTER?.isConfigured?.());}catch{return false;}
 }
+function cloudAuthenticated(){
+  try{return Boolean(window.OLIVEIRA_CLOUD_ADAPTER?.isAuthenticated?.());}catch{return false;}
+}
+function cloudAuthInfo(){
+  try{return window.OLIVEIRA_CLOUD_ADAPTER?.getAuthInfo?.() || {};}catch{return {};}
+}
 function updateSyncUI(){
   const online=navigator.onLine;
+  const configured=cloudConfigured();
+  const authenticated=cloudAuthenticated();
+  const auth=cloudAuthInfo();
   const badge=$('connectionBadge');
   if(badge){ badge.classList.toggle('offline',!online); $('connectionText').textContent=online?'Online':'Offline'; }
   if($('dataConnection')) $('dataConnection').textContent=online?'Online':'Offline';
   if($('dataPending')) $('dataPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
   if($('dataLastBackup')) $('dataLastBackup').textContent=fmtDateTime(state.meta.lastBackupAt);
-  if($('dataCloud')) $('dataCloud').textContent=cloudConfigured()?'Conectada':'Não conectada';
-  if($('syncNowBtn')) $('syncNowBtn').disabled=state.syncing;
+  if($('dataCloud')) $('dataCloud').textContent=!configured?'Não configurada':authenticated?'Conectada':'Login necessário';
+  if($('syncNowBtn')) $('syncNowBtn').disabled=state.syncing || !configured || !authenticated;
+  if($('cloudAccountBadge')){
+    $('cloudAccountBadge').textContent=!configured?'Configuração pendente':authenticated?'Conectado':'Desconectado';
+    $('cloudAccountBadge').classList.toggle('connected',authenticated);
+  }
+  if($('cloudLoginForm')) $('cloudLoginForm').classList.toggle('hidden',!configured || authenticated);
+  if($('cloudLoggedArea')) $('cloudLoggedArea').classList.toggle('hidden',!authenticated);
+  if($('cloudLoggedEmail')) $('cloudLoggedEmail').textContent=auth.email || 'Conta Firebase';
   if($('syncNotice')){
     let msg='';
     if(!online) msg='Você está offline. Novos dados continuarão sendo salvos neste aparelho.';
-    else if(!cloudConfigured()) msg='O Firebase ainda não está conectado. Use o backup para proteger os dados até ativarmos a sincronização entre aparelhos.';
+    else if(!configured) msg='A sincronização está preparada, mas o projeto Firebase ainda precisa ser configurado no arquivo firebase-config.js.';
+    else if(!authenticated) msg='Firebase configurado. Entre com a conta autorizada para ativar a sincronização entre aparelhos.';
     else if(state.syncing) msg='Sincronizando dados com a nuvem…';
     else if(state.syncQueue.length) msg=`${state.syncQueue.length} alteração(ões) aguardando sincronização.`;
     else msg='Dados locais e nuvem estão sincronizados.';
@@ -270,8 +294,10 @@ async function importBackup(file){
     const text=await file.text(); const data=JSON.parse(text);
     if(!validBackup(data)) return showToast('Arquivo de backup inválido.');
     if(!confirm(`Restaurar ${data.vehicles.length} veículo(s) e ${data.records.length} registro(s)? Os dados atuais serão substituídos.`)) return;
-    state.vehicles=data.vehicles; state.records=data.records;
-    state.syncQueue=[{id:uuid(),entityType:'snapshot',entityId:'all',updatedAt:new Date().toISOString()}];
+    const now=new Date().toISOString();
+    state.vehicles=data.vehicles.map(v=>({...v,updatedAt:v.updatedAt||v.createdAt||now}));
+    state.records=data.records.map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
+    state.syncQueue=[{id:uuid(),entityType:'snapshot',entityId:'all',updatedAt:now}];
     state.meta.lastRestoreAt=new Date().toISOString(); state.meta.lastLocalChange=state.meta.lastRestoreAt;
     save(); refreshAllViews(); updateSyncUI(); showToast('Backup restaurado.');
     if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),100);
@@ -282,7 +308,11 @@ async function attemptCloudSync(manual=false){
   if(!navigator.onLine){ if(manual) showToast('Sem internet. Os dados continuam salvos no aparelho.'); return false; }
   const adapter=window.OLIVEIRA_CLOUD_ADAPTER;
   if(!adapter?.isConfigured?.()){
-    if(manual) showToast('Firebase ainda não está conectado.');
+    if(manual) showToast('Firebase ainda não está configurado.');
+    updateSyncUI(); return false;
+  }
+  if(!adapter?.isAuthenticated?.()){
+    if(manual) showToast('Entre na conta Firebase para sincronizar.');
     updateSyncUI(); return false;
   }
   if(state.syncing) return false;
@@ -297,6 +327,37 @@ async function attemptCloudSync(manual=false){
   }catch(err){ console.error(err); if(manual) showToast('Não foi possível sincronizar agora.'); return false; }
   finally{ state.syncing=false; updateSyncUI(); }
 }
+$('cloudLoginForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const adapter=window.OLIVEIRA_CLOUD_ADAPTER;
+  if(!adapter?.isConfigured?.()) return showToast('Configure o Firebase primeiro.');
+  const email=$('cloudEmail').value.trim();
+  const password=$('cloudPassword').value;
+  if(!email || !password) return showToast('Informe e-mail e senha.');
+  const btn=$('cloudLoginBtn');
+  btn.disabled=true; btn.textContent='Conectando...';
+  try{
+    await adapter.signIn(email,password);
+    $('cloudPassword').value='';
+    updateSyncUI();
+    showToast('Nuvem conectada.');
+    await attemptCloudSync(false);
+  }catch(err){
+    console.error(err);
+    const msg=String(err?.message||'');
+    if(msg.includes('INVALID_LOGIN_CREDENTIALS') || msg.includes('INVALID_PASSWORD') || msg.includes('EMAIL_NOT_FOUND')) showToast('E-mail ou senha inválidos.');
+    else if(msg.includes('USER_DISABLED')) showToast('Usuário Firebase desativado.');
+    else showToast('Não foi possível conectar ao Firebase.');
+  }finally{
+    btn.disabled=false; btn.textContent='Conectar nuvem'; updateSyncUI();
+  }
+});
+$('cloudLogoutBtn')?.addEventListener('click',()=>{
+  window.OLIVEIRA_CLOUD_ADAPTER?.signOut?.();
+  updateSyncUI();
+  showToast('Conta da nuvem desconectada.');
+});
+
 $('dataBtn').addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); });
 $('closeDataDialog').addEventListener('click',()=>$('dataDialog').close());
 $('dataDialog').addEventListener('click',e=>{ if(e.target===$('dataDialog')) $('dataDialog').close(); });
@@ -317,6 +378,7 @@ updateSyncUI();
 renderHome();
 renderVehicleOptions();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
+setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
 const initial=location.hash.replace('#',''); if(['home','record','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
 
 // ===== Relatório em PDF por período =====
