@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#8f2e2f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Oliveira Frota" />
   <meta name="description" content="Controle simples de abastecimento e manutenção da frota da Oliveira Construção." />
 
   <!-- Prévia ao compartilhar no WhatsApp, Facebook e outros aplicativos -->
@@ -29,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <div class="app-shell">
@@ -186,6 +189,11 @@
             <span class="admin-menu-icon">⚙️</span>
             <strong>Administração</strong>
             <small>Veículos, backup e nuvem</small>
+          </button>
+          <button id="menuInstallBtn" class="admin-menu-card menu-feature-card install-menu-card" type="button">
+            <span class="admin-menu-icon">📲</span>
+            <strong>Instalar app</strong>
+            <small id="menuInstallHelp">Colocar o Oliveira Frota na tela inicial</small>
           </button>
         </div>
       </section>
@@ -536,6 +544,52 @@
     </div>
   </dialog>
 
+  <dialog id="installDialog" class="dialog install-dialog">
+    <div class="dialog-card install-dialog-card">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">OLIVEIRA FROTA</span>
+          <h3 id="installDialogTitle">Instalar aplicativo</h3>
+        </div>
+        <button id="closeInstallDialog" type="button" class="icon-btn" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="install-hero">
+        <img src="assets/icons/icon-192.png" alt="Ícone Oliveira Frota" />
+        <div>
+          <strong>Tenha o app na tela do celular</strong>
+          <span>Acesso mais rápido e funcionamento offline.</span>
+        </div>
+      </div>
+
+      <div id="installNativeArea" class="install-device-area hidden">
+        <p>Seu aparelho permite instalar o Oliveira Frota diretamente.</p>
+        <button id="installActionBtn" class="btn btn-primary btn-block" type="button">INSTALAR AGORA</button>
+      </div>
+
+      <div id="installIosArea" class="install-device-area hidden">
+        <p>No iPhone, faça assim:</p>
+        <div class="install-steps">
+          <div><b>1</b><span>Toque no botão <strong>Compartilhar</strong> do navegador.</span></div>
+          <div><b>2</b><span>Escolha <strong>Adicionar à Tela de Início</strong>.</span></div>
+          <div><b>3</b><span>Toque em <strong>Adicionar</strong>.</span></div>
+        </div>
+        <p class="install-tip">Se essa opção não aparecer, abra o link no Safari e tente novamente.</p>
+      </div>
+
+      <div id="installAndroidHelp" class="install-device-area hidden">
+        <p>Para instalar no Android, abra o menu <strong>⋮</strong> do navegador e toque em <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.</p>
+        <p class="install-tip">Quando a instalação nativa estiver disponível, o botão “Instalar agora” aparecerá aqui.</p>
+      </div>
+
+      <div id="installDesktopHelp" class="install-device-area hidden">
+        <p>Use a opção <strong>Instalar app</strong> disponível na barra de endereço ou no menu do navegador.</p>
+      </div>
+
+      <button id="installLaterBtn" class="btn btn-secondary btn-block install-later-btn" type="button">AGORA NÃO</button>
+    </div>
+  </dialog>
+
   <dialog id="oilSuccessDialog" class="dialog success-dialog">
     <div class="dialog-card success-dialog-card">
       <div class="success-check">✓</div>
@@ -567,6 +621,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=15" defer></script>
+  <script src="app.js?v=16" defer></script>
 </body>
 </html>

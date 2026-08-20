@@ -359,3 +359,120 @@ button{cursor:pointer}
 @media(max-width:560px){
   .danger-zone-head{flex-direction:column}
 }
+
+
+/* =========================================================
+   V16 — CABEÇALHO MAIOR + INSTALAÇÃO ANDROID/IPHONE
+   ========================================================= */
+.simple-topbar{
+  min-height:82px;
+  padding:13px clamp(16px,3vw,30px);
+  box-shadow:0 5px 18px rgba(0,0,0,.045);
+}
+.simple-topbar .brand{flex:1;gap:16px}
+.simple-topbar .brand-logo{
+  width:118px;
+  max-height:54px;
+}
+.simple-topbar .brand h1{
+  font-size:22px;
+  line-height:1.05;
+}
+.simple-topbar .brand p{
+  font-size:13px;
+  margin-top:5px;
+}
+.install-menu-card{
+  border:2px solid #c7d6c9;
+  background:#f5fbf6;
+}
+.install-menu-card .admin-menu-icon{font-size:34px}
+.install-menu-card strong{color:#2f6d42}
+
+.install-dialog-card{width:min(500px,calc(100vw - 26px))}
+.install-dialog-card .dialog-head{align-items:flex-start}
+.install-dialog-card .dialog-head h3{font-size:23px;margin:3px 0 0}
+.install-hero{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px;
+  margin:4px 0 14px;
+  border-radius:16px;
+  background:linear-gradient(135deg,#fff7ea,#fff);
+  border:1px solid #edd5a5;
+}
+.install-hero img{
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  flex:0 0 auto;
+}
+.install-hero strong{display:block;font-size:17px}
+.install-hero span{display:block;color:var(--muted);font-size:12px;line-height:1.4;margin-top:4px}
+.install-device-area{
+  border:1px solid #e6e6e2;
+  background:#fafaf8;
+  border-radius:15px;
+  padding:14px;
+  margin-top:10px;
+}
+.install-device-area>p{margin:0;color:#555;font-size:13px;line-height:1.5}
+.install-steps{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.install-steps>div{
+  display:grid;
+  grid-template-columns:30px 1fr;
+  gap:9px;
+  align-items:center;
+}
+.install-steps b{
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--wine);color:#fff;font-size:13px;
+}
+.install-steps span{font-size:13px;line-height:1.4}
+.install-tip{
+  margin-top:10px!important;
+  padding-top:10px;
+  border-top:1px solid #e5e5e1;
+  font-size:11px!important;
+  color:var(--muted)!important;
+}
+.install-later-btn{margin-top:10px!important}
+
+@media(max-width:560px){
+  .simple-topbar{
+    width:100%;
+    min-height:88px;
+    padding:12px 14px;
+    border-radius:0;
+  }
+  .simple-topbar .brand{
+    width:100%;
+    min-width:0;
+    gap:12px;
+  }
+  .simple-topbar .brand-logo{
+    width:104px;
+    max-height:52px;
+  }
+  .simple-topbar .brand h1{
+    font-size:20px;
+  }
+  .simple-topbar .brand p{
+    display:block;
+    font-size:11px;
+    margin-top:4px;
+  }
+  .simple-topbar .top-actions{
+    flex:0 0 auto;
+  }
+  .install-dialog-card{padding:18px 15px}
+  .install-hero{align-items:flex-start}
+  .install-hero img{width:64px;height:64px;border-radius:16px}
+}
+
+@media(max-width:390px){
+  .simple-topbar .brand-logo{width:92px}
+  .simple-topbar .brand h1{font-size:18px}
+  .simple-topbar .brand p{font-size:10px}
+}

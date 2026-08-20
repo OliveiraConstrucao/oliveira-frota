@@ -1158,15 +1158,149 @@ $('clearTestDataBtn')?.addEventListener('click',clearTestData);
 window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
-$('installBtn')?.addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
+const INSTALL_OFFER_KEY='oliveira_frota_install_offer_seen_v1';
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=15').catch(()=>{})); }
+function isStandaloneApp(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function isIOSDevice(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+}
+function isAndroidDevice(){
+  return /android/i.test(navigator.userAgent);
+}
+function isMobileDevice(){
+  return isIOSDevice() || isAndroidDevice() || window.matchMedia('(max-width: 760px)').matches;
+}
+function setInstallArea(id,show){
+  const el=$(id);
+  if(el) el.classList.toggle('hidden',!show);
+}
+function updateInstallUI(){
+  const installed=isStandaloneApp();
+  const menuBtn=$('menuInstallBtn');
+  const adminBtn=$('installBtn');
+
+  if(menuBtn){
+    menuBtn.classList.toggle('hidden',installed);
+    const help=$('menuInstallHelp');
+    if(help){
+      help.textContent=installed
+        ? 'Aplicativo já instalado'
+        : isIOSDevice()
+          ? 'Adicionar à Tela de Início no iPhone'
+          : 'Colocar o Oliveira Frota no celular';
+    }
+  }
+  if(adminBtn){
+    adminBtn.classList.toggle('hidden',installed || (!state.deferredPrompt && !isIOSDevice()));
+  }
+
+  if(!$('installDialog')) return;
+  setInstallArea('installNativeArea',Boolean(state.deferredPrompt) && !installed);
+  setInstallArea('installIosArea',isIOSDevice() && !installed);
+  setInstallArea('installAndroidHelp',isAndroidDevice() && !state.deferredPrompt && !installed);
+  setInstallArea('installDesktopHelp',!isMobileDevice() && !state.deferredPrompt && !installed);
+
+  if($('installDialogTitle')){
+    $('installDialogTitle').textContent=isIOSDevice()
+      ? 'Instalar no iPhone'
+      : isAndroidDevice()
+        ? 'Instalar no Android'
+        : 'Instalar aplicativo';
+  }
+}
+function openInstallDialog({automatic=false}={}){
+  if(isStandaloneApp()){
+    if(!automatic) showToast('O Oliveira Frota já está instalado neste aparelho.');
+    return;
+  }
+  updateInstallUI();
+  const dlg=$('installDialog');
+  if(dlg && !dlg.open) dlg.showModal();
+}
+async function runNativeInstall(){
+  if(!state.deferredPrompt){
+    updateInstallUI();
+    if(isIOSDevice()) return;
+    showToast('Use a opção “Instalar app” do menu do navegador.');
+    return;
+  }
+  const promptEvent=state.deferredPrompt;
+  state.deferredPrompt=null;
+  promptEvent.prompt();
+  const choice=await promptEvent.userChoice.catch(()=>null);
+  updateInstallUI();
+  if(choice?.outcome==='accepted'){
+    localStorage.setItem(INSTALL_OFFER_KEY,'1');
+    $('installDialog')?.close();
+    showToast('Instalação iniciada.');
+  }
+}
+
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  state.deferredPrompt=e;
+  updateInstallUI();
+
+  // Na primeira visita ao celular, abre a oferta assim que o navegador
+  // disponibilizar a instalação nativa.
+  if(!isStandaloneApp() && isMobileDevice() && !localStorage.getItem(INSTALL_OFFER_KEY)){
+    localStorage.setItem(INSTALL_OFFER_KEY,'1');
+    setTimeout(()=>openInstallDialog({automatic:true}),350);
+  }
+});
+
+window.addEventListener('appinstalled',()=>{
+  state.deferredPrompt=null;
+  localStorage.setItem(INSTALL_OFFER_KEY,'1');
+  $('installDialog')?.close();
+  updateInstallUI();
+  showToast('Oliveira Frota instalado.');
+});
+
+$('menuInstallBtn')?.addEventListener('click',()=>openInstallDialog());
+$('installBtn')?.addEventListener('click',()=>openInstallDialog());
+$('installActionBtn')?.addEventListener('click',runNativeInstall);
+$('closeInstallDialog')?.addEventListener('click',()=>$('installDialog').close());
+$('installLaterBtn')?.addEventListener('click',()=>{
+  localStorage.setItem(INSTALL_OFFER_KEY,'1');
+  $('installDialog').close();
+});
+$('installDialog')?.addEventListener('click',e=>{
+  if(e.target===$('installDialog')){
+    localStorage.setItem(INSTALL_OFFER_KEY,'1');
+    $('installDialog').close();
+  }
+});
+
+function offerInstallOnFirstVisit(){
+  if(isStandaloneApp() || !isMobileDevice() || localStorage.getItem(INSTALL_OFFER_KEY)) return;
+
+  // iPhone não dispara beforeinstallprompt. Por isso a orientação
+  // aparece automaticamente no primeiro acesso.
+  if(isIOSDevice()){
+    localStorage.setItem(INSTALL_OFFER_KEY,'1');
+    setTimeout(()=>openInstallDialog({automatic:true}),900);
+    return;
+  }
+
+  // No Android damos um pequeno tempo para o beforeinstallprompt chegar.
+  setTimeout(()=>{
+    if(isStandaloneApp() || localStorage.getItem(INSTALL_OFFER_KEY)) return;
+    localStorage.setItem(INSTALL_OFFER_KEY,'1');
+    openInstallDialog({automatic:true});
+  },1800);
+}
+
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=16').catch(()=>{})); }
 
 load();
 updateSyncUI();
+updateInstallUI();
 renderHome();
 renderVehicleOptions();
+offerInstallOnFirstVisit();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
 const initial=location.hash.replace('#',''); if(['home','record','menu','admin','vehicles','corrections','history','oil','oil-record'].includes(initial)) nav(initial); else nav('home');
