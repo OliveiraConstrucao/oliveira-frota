@@ -1970,3 +1970,43 @@ body.splash-lock{
 @media(max-width:360px){
   .system-info-grid{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   V32 — SINCRONIZAÇÃO AUTOMÁTICA SEM LOGIN
+   ========================================================= */
+.cloud-auto-card{
+  background:linear-gradient(135deg,#fff 0%,#f4fbf6 100%);
+}
+.cloud-auto-info{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:14px;
+  margin-top:12px;
+  border:1px solid #cfe3d4;
+  border-radius:14px;
+  background:#f2faf4;
+}
+.cloud-auto-icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#e1f2e5;
+  font-size:22px;
+}
+.cloud-auto-info strong{
+  display:block;
+  color:#2d6c40;
+  font-size:15px;
+}
+.cloud-auto-info p{
+  margin:4px 0 0;
+  color:#55705d;
+  font-size:12px;
+  line-height:1.45;
+}

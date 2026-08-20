@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=31" />
+  <link rel="stylesheet" href="styles.css?v=32" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -759,33 +759,21 @@
 
       <div id="syncNotice" class="sync-notice"></div>
 
-      <section class="cloud-auth-card" aria-labelledby="cloudAuthTitle">
+      <section class="cloud-auth-card cloud-auto-card" aria-labelledby="cloudAuthTitle">
         <div class="cloud-auth-head">
           <div>
             <span class="eyebrow">NUVEM</span>
-            <h4 id="cloudAuthTitle">Firebase</h4>
+            <h4 id="cloudAuthTitle">Sincronização automática</h4>
           </div>
-          <span id="cloudAccountBadge" class="cloud-account-badge">Desconectado</span>
+          <span id="cloudAccountBadge" class="cloud-account-badge">Conectando</span>
         </div>
 
-        <form id="cloudLoginForm" class="cloud-login-form" autocomplete="on">
-          <label class="field">
-            <span>E-mail</span>
-            <input id="cloudEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required />
-          </label>
-          <label class="field">
-            <span>Senha</span>
-            <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Senha do Firebase" required />
-          </label>
-          <button id="cloudLoginBtn" class="btn btn-primary" type="submit">Conectar nuvem</button>
-        </form>
-
-        <div id="cloudLoggedArea" class="cloud-logged-area hidden">
+        <div class="cloud-auto-info">
+          <span class="cloud-auto-icon">☁️</span>
           <div>
-            <span class="muted">Conta conectada</span>
-            <strong id="cloudLoggedEmail">—</strong>
+            <strong id="cloudAutoTitle">Nenhum login é necessário</strong>
+            <p id="cloudAutoMessage">Quando houver internet, o app conecta ao Firebase e sincroniza sozinho.</p>
           </div>
-          <button id="cloudLogoutBtn" class="btn btn-secondary" type="button">Sair da nuvem</button>
         </div>
 
         <div id="cloudDiagnostic" class="cloud-diagnostic hidden" role="status" aria-live="polite">
@@ -809,7 +797,7 @@
         <button id="syncNowBtn" class="btn btn-secondary" type="button">Sincronizar agora</button>
       </div>
       <input id="importBackupFile" type="file" accept="application/json,.json" class="hidden" />
-      <p class="dialog-note">O app continua funcionando sem internet. Quando o Firebase estiver configurado e a conta estiver conectada, as alterações pendentes serão sincronizadas automaticamente ao voltar a internet.</p>
+      <p class="dialog-note">O app continua funcionando sem internet. Quando a internet voltar, as alterações pendentes serão sincronizadas automaticamente, sem login do funcionário.</p>
 
       <section class="danger-zone" aria-labelledby="dangerZoneTitle">
         <div class="danger-zone-head">
@@ -819,7 +807,7 @@
           </div>
           <span class="danger-badge">Ação restrita</span>
         </div>
-        <p>Use somente quando terminar os testes. A função remove da operação os veículos fictícios, abastecimentos e trocas de óleo de teste, preservando o Firebase, login e configurações do aplicativo.</p>
+        <p>Use somente quando terminar os testes. A função remove da operação os veículos fictícios, abastecimentos e trocas de óleo de teste, preservando o Firebase e as configurações do aplicativo.</p>
         <button id="clearTestDataBtn" class="btn btn-danger btn-block" type="button">Limpar dados de teste</button>
       </section>
     </div>
@@ -978,7 +966,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
-  <script src="cloud-sync.js?v=31" defer></script>
-  <script src="app.js?v=31" defer></script>
+  <script src="cloud-sync.js?v=32" defer></script>
+  <script src="app.js?v=32" defer></script>
 </body>
 </html>

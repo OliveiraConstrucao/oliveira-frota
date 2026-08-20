@@ -22,7 +22,9 @@
       configured: configured(),
       authenticated: Boolean(s?.refreshToken || s?.idToken),
       email: s?.email || '',
-      uid: s?.localId || ''
+      uid: s?.localId || '',
+      anonymous: Boolean(s?.anonymous),
+      provider: s?.anonymous ? 'anonymous' : (s?.email ? 'password' : '')
     };
   }
   async function jsonFetch(url, options={}){
@@ -51,6 +53,44 @@
     }
     return data;
   }
+  async function signInAnonymously(){
+    if(!configured()) throw new Error('Firebase não configurado.');
+    const c = cfg();
+    const data = await jsonFetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(c.apiKey)}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({returnSecureToken:true})
+      }
+    );
+    const expiresAt = nowMs() + (Number(data.expiresIn || 3600) * 1000);
+    setSession({
+      idToken:data.idToken,
+      refreshToken:data.refreshToken,
+      expiresAt,
+      email:'',
+      localId:data.localId || '',
+      anonymous:true
+    });
+    return authInfo();
+  }
+  async function ensureAuthenticated(){
+    if(!configured()) throw new Error('Firebase não configurado.');
+    const s=getSession();
+    if(s?.refreshToken || s?.idToken){
+      try{
+        await token();
+        return authInfo();
+      }catch(err){
+        const code=String(err?.code||err?.message||'').toUpperCase();
+        if(code.includes('NETWORK_REQUEST_FAILED') || code.includes('FAILED TO FETCH')) throw err;
+        setSession(null);
+      }
+    }
+    return signInAnonymously();
+  }
+
   async function signIn(email, password){
     if(!configured()) throw new Error('Firebase não configurado.');
     const c = cfg();
@@ -68,7 +108,8 @@
       refreshToken:data.refreshToken,
       expiresAt,
       email:data.email || email,
-      localId:data.localId || ''
+      localId:data.localId || '',
+      anonymous:false
     });
     return authInfo();
   }
@@ -97,7 +138,8 @@
       refreshToken:data.refresh_token || s.refreshToken,
       expiresAt:nowMs() + (Number(data.expires_in || 3600) * 1000),
       email:s.email || '',
-      localId:data.user_id || s.localId || ''
+      localId:data.user_id || s.localId || '',
+      anonymous:Boolean(s.anonymous)
     };
     setSession(next);
     return next;
@@ -199,7 +241,7 @@
 
   async function sync(payload){
     if(!configured()) throw new Error('Firebase não configurado.');
-    if(!authInfo().authenticated) throw new Error('LOGIN_REQUIRED');
+    await ensureAuthenticated();
 
     let vehicles = (payload.vehicles || []).map(v => withUpdatedAt(v));
     let records = (payload.records || []).map(r => withUpdatedAt(r));
@@ -267,6 +309,8 @@
     isConfigured:configured,
     isAuthenticated:() => authInfo().authenticated,
     getAuthInfo:authInfo,
+    ensureAuthenticated,
+    signInAnonymously,
     signIn,
     signOut,
     sync

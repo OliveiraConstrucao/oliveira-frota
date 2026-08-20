@@ -1445,7 +1445,7 @@ function cloudAuthInfo(){
 function systemSyncLabel(){
   if(!navigator.onLine) return 'Offline';
   if(!cloudConfigured()) return 'Nuvem não configurada';
-  if(!cloudAuthenticated()) return 'Login da nuvem necessário';
+  if(!cloudAuthenticated()) return 'Conectando automaticamente...';
   if(state.syncing) return 'Sincronizando...';
   if(state.syncQueue.length) return `${state.syncQueue.length} pendente(s)`;
   return 'Sincronizado';
@@ -1457,7 +1457,7 @@ function renderSystemInfo(){
   if($('systemSyncStatus')) $('systemSyncStatus').textContent=systemSyncLabel();
   if($('systemPending')) $('systemPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
   if($('systemLastSync')) $('systemLastSync').textContent=fmtDateTime(state.meta.lastSyncAt);
-  if($('systemCloud')) $('systemCloud').textContent=!cloudConfigured()?'Não configurada':cloudAuthenticated()?'Conectada':'Login necessário';
+  if($('systemCloud')) $('systemCloud').textContent=!cloudConfigured()?'Não configurada':cloudAuthenticated()?'Conectada':'Conexão automática';
   if($('systemInstalled')) $('systemInstalled').textContent=isStandaloneApp()?'Instalado':'Aberto no navegador';
 }
 async function checkAppUpdateNow(){
@@ -1500,20 +1500,27 @@ function updateSyncUI(){
   if($('dataConnection')) $('dataConnection').textContent=online?'Online':'Offline';
   if($('dataPending')) $('dataPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
   if($('dataLastBackup')) $('dataLastBackup').textContent=fmtDateTime(state.meta.lastBackupAt);
-  if($('dataCloud')) $('dataCloud').textContent=!configured?'Não configurada':authenticated?'Conectada':'Login necessário';
-  if($('syncNowBtn')) $('syncNowBtn').disabled=state.syncing || !configured || !authenticated;
+  if($('dataCloud')) $('dataCloud').textContent=!configured?'Não configurada':authenticated?'Conectada':'Conectando';
+  if($('syncNowBtn')) $('syncNowBtn').disabled=state.syncing || !configured || !online;
   if($('cloudAccountBadge')){
-    $('cloudAccountBadge').textContent=!configured?'Configuração pendente':authenticated?'Conectado':'Desconectado';
+    $('cloudAccountBadge').textContent=!configured?'Configuração pendente':authenticated?'Conectado':'Automático';
     $('cloudAccountBadge').classList.toggle('connected',authenticated);
   }
-  if($('cloudLoginForm')) $('cloudLoginForm').classList.toggle('hidden',!configured || authenticated);
-  if($('cloudLoggedArea')) $('cloudLoggedArea').classList.toggle('hidden',!authenticated);
-  if($('cloudLoggedEmail')) $('cloudLoggedEmail').textContent=auth.email || 'Conta Firebase';
+  if($('cloudAutoTitle')){
+    $('cloudAutoTitle').textContent=!configured?'Firebase não configurado':authenticated?'Nuvem conectada automaticamente':'Conexão automática preparada';
+  }
+  if($('cloudAutoMessage')){
+    $('cloudAutoMessage').textContent=!configured
+      ? 'A configuração técnica do Firebase precisa ser concluída.'
+      : authenticated
+        ? 'Os dados deste aparelho são sincronizados automaticamente com os outros aparelhos.'
+        : 'O app fará a conexão sozinho assim que a autenticação automática estiver disponível.';
+  }
   if($('syncNotice')){
     let msg='';
     if(!online) msg='Você está offline. Novos dados continuarão sendo salvos neste aparelho.';
     else if(!configured) msg='A sincronização está preparada, mas o projeto Firebase ainda precisa ser configurado no arquivo firebase-config.js.';
-    else if(!authenticated) msg='Firebase configurado. Entre com a conta autorizada para ativar a sincronização entre aparelhos.';
+    else if(!authenticated) msg='Conectando automaticamente à nuvem… Nenhum login do funcionário é necessário.';
     else if(state.syncing) msg='Sincronizando dados com a nuvem…';
     else if(state.syncQueue.length) msg=`${state.syncQueue.length} alteração(ões) aguardando sincronização.`;
     else msg='Dados locais e nuvem estão sincronizados.';
@@ -1568,13 +1575,13 @@ async function attemptCloudSync(manual=false){
     if(manual) showToast('Firebase ainda não está configurado.');
     updateSyncUI(); return false;
   }
-  if(!adapter?.isAuthenticated?.()){
-    if(manual) showToast('Entre na conta Firebase para sincronizar.');
-    updateSyncUI(); return false;
-  }
   if(state.syncing) return false;
   state.syncing=true; updateSyncUI();
   try{
+    if(!adapter?.isAuthenticated?.()){
+      await adapter.ensureAuthenticated?.();
+      updateSyncUI();
+    }
     const result=await adapter.sync({vehicles:state.vehicles,records:state.records,oilChanges:state.oilChanges,auditLogs:state.auditLogs,queue:state.syncQueue,meta:state.meta});
     if(result?.vehicles && Array.isArray(result.vehicles)) state.vehicles=result.vehicles;
     if(result?.records && Array.isArray(result.records)) state.records=result.records;
@@ -1583,7 +1590,19 @@ async function attemptCloudSync(manual=false){
     state.syncQueue=[]; state.meta.lastSyncAt=new Date().toISOString(); save(); refreshAllViews();
     if(manual) showToast('Sincronização concluída.');
     return true;
-  }catch(err){ console.error(err); if(manual) showToast('Não foi possível sincronizar agora.'); return false; }
+  }catch(err){
+    console.error(err);
+    const code=String(err?.code||err?.message||'').toUpperCase();
+    if(code.includes('OPERATION_NOT_ALLOWED')){
+      state.meta.cloudAutoAuthError='ANONYMOUS_AUTH_DISABLED';
+      save();
+      setCloudDiagnostic(err);
+      if(manual) showToast('A sincronização automática precisa ser ativada uma única vez no Firebase.');
+    }else if(manual){
+      showToast('Não foi possível sincronizar agora.');
+    }
+    return false;
+  }
   finally{ state.syncing=false; updateSyncUI(); }
 }
 
@@ -1593,7 +1612,7 @@ function firebaseErrorExplanation(code){
     return 'O Firebase recusou as credenciais. Confira se o e-mail é exatamente o usuário criado em Authentication e redefina a senha se necessário.';
   }
   if(c.includes('OPERATION_NOT_ALLOWED')){
-    return 'O provedor E-mail/senha não está habilitado no Firebase Authentication.';
+    return 'A autenticação anônima ainda não está habilitada no Firebase. Ative Authentication → Método de login → Anônimo uma única vez; depois todos os aparelhos conectam automaticamente.';
   }
   if(c.includes('API_KEY_INVALID') || c.includes('API_KEY_NOT_VALID')){
     return 'A chave da API configurada no site não foi aceita pelo Firebase.';
@@ -1653,43 +1672,22 @@ $('copyDiagnosticBtn')?.addEventListener('click',async()=>{
   }
 });
 
-$('cloudLoginForm')?.addEventListener('submit',async e=>{
-  e.preventDefault();
+async function ensureCloudConnection(){
+  if(!navigator.onLine || !cloudConfigured()) return false;
   const adapter=window.OLIVEIRA_CLOUD_ADAPTER;
-  if(!adapter?.isConfigured?.()) return showToast('Configure o Firebase primeiro.');
-  const email=$('cloudEmail').value.trim();
-  const password=$('cloudPassword').value;
-  if(!email || !password) return showToast('Informe e-mail e senha.');
-  const btn=$('cloudLoginBtn');
-  btn.disabled=true; btn.textContent='Conectando...';
   try{
-    setCloudDiagnostic(null,'');
-    await adapter.signIn(email,password);
-    $('cloudPassword').value='';
+    if(!adapter?.isAuthenticated?.()) await adapter.ensureAuthenticated?.();
     updateSyncUI();
-    setCloudDiagnostic(null,'Login aceito pelo Firebase. Agora o app pode sincronizar os dados.');
-    showToast('Nuvem conectada.');
-    await attemptCloudSync(false);
+    return Boolean(adapter?.isAuthenticated?.());
   }catch(err){
-    console.error('Firebase login diagnostic:',err);
+    console.error('Automatic Firebase auth:',err);
     setCloudDiagnostic(err);
-    const msg=String(err?.code||err?.message||'');
-    if(msg.includes('INVALID_LOGIN_CREDENTIALS') || msg.includes('INVALID_PASSWORD') || msg.includes('EMAIL_NOT_FOUND')) showToast('E-mail ou senha inválidos.');
-    else if(msg.includes('USER_DISABLED')) showToast('Usuário Firebase desativado.');
-    else if(msg.includes('NETWORK_REQUEST_FAILED') || msg.includes('Failed to fetch')) showToast('Falha de rede ao acessar o Firebase.');
-    else showToast(`Firebase: ${msg || 'erro desconhecido'}`);
-  }finally{
-    btn.disabled=false; btn.textContent='Conectar nuvem'; updateSyncUI();
+    updateSyncUI();
+    return false;
   }
-});
-$('cloudLogoutBtn')?.addEventListener('click',()=>{
-  window.OLIVEIRA_CLOUD_ADAPTER?.signOut?.();
-  setCloudDiagnostic(null,'');
-  updateSyncUI();
-  showToast('Conta da nuvem desconectada.');
-});
+}
 
-$('dataBtn')?.addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); });
+$('dataBtn')?.addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); if(navigator.onLine) ensureCloudConnection().then(()=>attemptCloudSync(false)); });
 $('closeDataDialog').addEventListener('click',()=>$('dataDialog').close());
 $('dataDialog').addEventListener('click',e=>{ if(e.target===$('dataDialog')) $('dataDialog').close(); });
 $('exportBackupBtn').addEventListener('click',exportBackup);
@@ -1702,12 +1700,12 @@ async function clearTestData(){
     showToast('Conecte o aparelho à internet antes de limpar os dados de teste.');
     return;
   }
-  if(!cloudConfigured() || !cloudAuthenticated()){
-    showToast('Conecte o Firebase antes de limpar os dados de teste.');
+  if(!cloudConfigured()){
+    showToast('O Firebase ainda não está configurado.');
     return;
   }
 
-  // Primeiro traz para este aparelho qualquer dado de teste que esteja na nuvem.
+  // Primeiro conecta automaticamente e traz para este aparelho qualquer dado de teste que esteja na nuvem.
   const synced=await attemptCloudSync(false);
   if(!synced){
     showToast('Não foi possível conferir a nuvem. Tente sincronizar novamente.');
@@ -1972,7 +1970,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='31';
+const OLIVEIRA_APP_VERSION='32';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
@@ -2049,7 +2047,7 @@ renderVehicleOptions();
 const ownerRequired=promptDeviceOwnerIfNeeded();
 if(!ownerRequired) offerInstallOnFirstVisit();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
-setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
+setInterval(()=>{ if(navigator.onLine && cloudConfigured()) attemptCloudSync(false); },60000);
 const initialHash=location.hash.replace('#','');
 let initialView=APP_VIEWS.includes(initialHash)?initialHash:'home';
 const protectedInitial=PROTECTED_VIEWS.includes(initialView) && !adminUnlocked();
