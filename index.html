@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=32" />
+  <link rel="stylesheet" href="styles.css?v=33" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -799,16 +799,17 @@
       <input id="importBackupFile" type="file" accept="application/json,.json" class="hidden" />
       <p class="dialog-note">O app continua funcionando sem internet. Quando a internet voltar, as alterações pendentes serão sincronizadas automaticamente, sem login do funcionário.</p>
 
-      <section class="danger-zone" aria-labelledby="dangerZoneTitle">
+      <section class="danger-zone demo-cleanup-zone" aria-labelledby="dangerZoneTitle">
         <div class="danger-zone-head">
           <div>
-            <span class="eyebrow">ANTES DE ENTREGAR O APP</span>
-            <h4 id="dangerZoneTitle">Limpar dados de teste</h4>
+            <span class="eyebrow">DADOS DE DEMONSTRAÇÃO</span>
+            <h4 id="dangerZoneTitle">Remover demonstração</h4>
           </div>
-          <span class="danger-badge">Ação restrita</span>
+          <span class="danger-badge">Seguro para a frota real</span>
         </div>
-        <p>Use somente quando terminar os testes. A função remove da operação os veículos fictícios, abastecimentos e trocas de óleo de teste, preservando o Firebase e as configurações do aplicativo.</p>
-        <button id="clearTestDataBtn" class="btn btn-danger btn-block" type="button">Limpar dados de teste</button>
+        <p>Remove somente abastecimentos e trocas de óleo criados para apresentação. Veículos de teste que já foram alterados para dados oficiais serão preservados.</p>
+        <div id="demoCleanupSummary" class="demo-cleanup-summary">Verificando dados de demonstração...</div>
+        <button id="clearDemoDataBtn" class="btn btn-danger btn-block" type="button">Remover dados de demonstração</button>
       </section>
     </div>
   </dialog>
@@ -967,6 +968,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=32" defer></script>
-  <script src="app.js?v=32" defer></script>
+  <script src="app.js?v=33" defer></script>
 </body>
 </html>

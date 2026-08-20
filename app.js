@@ -118,7 +118,8 @@ function auditActionLabel(action=''){
     pin_setup:'PIN criado',
     pin_change:'PIN alterado',
     test_data_clear:'Dados de teste limpos',
-    backup_restore:'Backup restaurado'
+    backup_restore:'Backup restaurado',
+    demo_cleanup:'Demonstração removida'
   };
   return labels[action] || action || 'Alteração';
 }
@@ -246,7 +247,7 @@ function load(){
 function ensurePresentationDemoData(){
   // Esta versão é de apresentação. Não recria os dados depois que a
   // limpeza de testes tiver sido executada neste aparelho.
-  if(state.meta?.testDataClearedAt) return false;
+  if(state.meta?.testDataClearedAt || state.meta?.demoDataRemovedAt) return false;
 
   const now='2026-08-20T17:30:00-03:00';
   let changed=false;
@@ -1687,7 +1688,7 @@ async function ensureCloudConnection(){
   }
 }
 
-$('dataBtn')?.addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); if(navigator.onLine) ensureCloudConnection().then(()=>attemptCloudSync(false)); });
+$('dataBtn')?.addEventListener('click',()=>{ updateSyncUI(); renderDemoCleanupSummary(); $('dataDialog').showModal(); if(navigator.onLine) ensureCloudConnection().then(()=>attemptCloudSync(false).then(()=>renderDemoCleanupSummary())); });
 $('closeDataDialog').addEventListener('click',()=>$('dataDialog').close());
 $('dataDialog').addEventListener('click',e=>{ if(e.target===$('dataDialog')) $('dataDialog').close(); });
 $('exportBackupBtn').addEventListener('click',exportBackup);
@@ -1695,9 +1696,48 @@ $('importBackupBtn').addEventListener('click',()=>$('importBackupFile').click())
 $('importBackupFile').addEventListener('change',async e=>{ const file=e.target.files?.[0]; if(file) await importBackup(file); e.target.value=''; });
 $('syncNowBtn').addEventListener('click',()=>attemptCloudSync(true));
 
-async function clearTestData(){
+const DEMO_ORIGINAL_VEHICLES={
+  'demo-v23-basculante-02':{name:'Caminhão Basculante 02',plate:'RFA2C18'},
+  'demo-v23-cacamba-03':{name:'Caminhão Caçamba 03',plate:'RFB3D29'}
+};
+
+function demoCleanupStats(){
+  const demoRecords=state.records.filter(r=>r.demoSeed && !r.deletedAt);
+  const demoOilChanges=state.oilChanges.filter(o=>o.demoSeed && !o.deletedAt);
+  const demoVehicles=state.vehicles.filter(v=>v.demoSeed && !v.deletedAt);
+  const untouched=[];
+  const converted=[];
+  for(const v of demoVehicles){
+    const original=DEMO_ORIGINAL_VEHICLES[v.id];
+    const sameAsSeed=Boolean(
+      original &&
+      String(v.name||'').trim()===original.name &&
+      String(v.plate||'').trim().toUpperCase()===original.plate
+    );
+    (sameAsSeed?untouched:converted).push(v);
+  }
+  return {demoRecords,demoOilChanges,demoVehicles,untouched,converted};
+}
+function renderDemoCleanupSummary(){
+  const el=$('demoCleanupSummary');
+  if(!el) return;
+  const s=demoCleanupStats();
+  if(!s.demoRecords.length && !s.demoOilChanges.length && !s.demoVehicles.length){
+    el.innerHTML='<strong>Nenhum dado de demonstração encontrado.</strong>';
+    $('clearDemoDataBtn').disabled=true;
+    return;
+  }
+  $('clearDemoDataBtn').disabled=false;
+  el.innerHTML=`
+    <div><span>Abastecimentos demo</span><strong>${s.demoRecords.length}</strong></div>
+    <div><span>Trocas de óleo demo</span><strong>${s.demoOilChanges.length}</strong></div>
+    <div><span>Veículos demo sem alteração</span><strong>${s.untouched.length}</strong></div>
+    <div><span>Veículos convertidos em oficiais</span><strong>${s.converted.length}</strong></div>
+  `;
+}
+async function clearDemoDataSafely(){
   if(!navigator.onLine){
-    showToast('Conecte o aparelho à internet antes de limpar os dados de teste.');
+    showToast('Conecte o aparelho à internet antes de remover a demonstração.');
     return;
   }
   if(!cloudConfigured()){
@@ -1705,84 +1745,115 @@ async function clearTestData(){
     return;
   }
 
-  // Primeiro conecta automaticamente e traz para este aparelho qualquer dado de teste que esteja na nuvem.
+  // Sincroniza antes para trabalhar com o estado mais atual.
   const synced=await attemptCloudSync(false);
   if(!synced){
-    showToast('Não foi possível conferir a nuvem. Tente sincronizar novamente.');
+    showToast('Não foi possível conferir a nuvem. Tente novamente.');
     return;
   }
 
-  const vehicleCount=managedVehicles().length;
-  const recordCount=correctionRecords().length;
-  const oilCount=state.oilChanges.filter(o=>!o.deletedAt).length;
-  const total=vehicleCount+recordCount+oilCount;
-
-  if(total===0){
-    showToast('Não há dados de teste para limpar.');
+  const stats=demoCleanupStats();
+  const total=stats.demoRecords.length+stats.demoOilChanges.length+stats.untouched.length+stats.converted.length;
+  if(!total){
+    showToast('Não há dados de demonstração para remover.');
+    renderDemoCleanupSummary();
     return;
   }
 
-  const first=confirm(
-    `ATENÇÃO\n\nSerão removidos da operação:\n`+
-    `• ${vehicleCount} veículo(s)\n`+
-    `• ${recordCount} abastecimento(s)\n`+
-    `• ${oilCount} troca(s) de óleo\n\n`+
-    `O login, Firebase e configurações do app serão preservados.\n\n`+
-    `Antes de continuar, é recomendável ter um backup. Deseja prosseguir?`
-  );
-  if(!first) return;
+  const convertedNames=stats.converted.map(v=>`${v.name} (${v.plate})`).join(', ');
+  const text=[
+    'REMOVER DADOS DE DEMONSTRAÇÃO',
+    '',
+    `Abastecimentos demo: ${stats.demoRecords.length}`,
+    `Trocas de óleo demo: ${stats.demoOilChanges.length}`,
+    `Veículos de teste ainda intactos: ${stats.untouched.length}`,
+    `Veículos de teste convertidos em oficiais: ${stats.converted.length}`,
+    '',
+    'Os veículos convertidos em oficiais serão PRESERVADOS.'
+  ];
+  if(convertedNames) text.push('',`Preservados: ${convertedNames}`);
+  text.push('','Deseja continuar?');
 
-  const typed=prompt('Para confirmar a limpeza dos dados de teste, digite exatamente: LIMPAR');
-  if(String(typed||'').trim().toUpperCase()!=='LIMPAR'){
+  if(!confirm(text.join('\n'))) return;
+
+  const typed=prompt('Para confirmar, digite exatamente: REMOVER');
+  if(String(typed||'').trim().toUpperCase()!=='REMOVER'){
     showToast('Limpeza cancelada.');
     return;
   }
 
-  // Faz uma cópia local imediatamente antes da limpeza.
+  // Backup antes da operação.
   exportBackup();
 
   const now=new Date().toISOString();
-  const enqueue=(entityType,obj)=>{
-    state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===obj.id));
-    state.syncQueue.push({id:uuid(),entityType,entityId:obj.id,updatedAt:now});
-  };
 
-  for(const v of state.vehicles){
-    if(v.deletedAt) continue;
-    v.deletedAt=now;
-    v.updatedAt=now;
-    enqueue('vehicle',v);
-  }
-  for(const r of state.records){
-    if(r.deletedAt) continue;
+  // Remove apenas registros demo.
+  for(const r of stats.demoRecords){
     r.deletedAt=now;
     r.updatedAt=now;
-    enqueue('record',r);
+    queueChange('record',r.id);
   }
-  for(const o of state.oilChanges){
-    if(o.deletedAt) continue;
+  for(const o of stats.demoOilChanges){
     o.deletedAt=now;
     o.updatedAt=now;
-    enqueue('oilChange',o);
+    queueChange('oilChange',o.id);
   }
 
-  state.currentVehicleId=null;
+  // Veículos demo não alterados são removidos.
+  for(const v of stats.untouched){
+    v.deletedAt=now;
+    v.updatedAt=now;
+    queueChange('vehicle',v.id);
+  }
+
+  // Veículos reaproveitados/renomeados são oficialmente promovidos:
+  // mantém ID e histórico real, mas deixa de ser demo.
+  for(const v of stats.converted){
+    v.demoSeed=false;
+    v.demoConvertedToOfficialAt=now;
+    v.updatedAt=now;
+    queueChange('vehicle',v.id);
+  }
+
+  // Limpa marca demo de registros não-demo vinculados a veículos convertidos,
+  // caso algum lançamento real tenha herdado propriedades antigas.
+  const convertedIds=new Set(stats.converted.map(v=>v.id));
+  for(const r of state.records){
+    if(convertedIds.has(r.vehicleId) && !r.deletedAt && !r.demoSeed){
+      r.updatedAt=r.updatedAt||now;
+    }
+  }
+
+  addAudit(
+    'demo_cleanup',
+    `Dados de demonstração removidos com segurança: ${stats.demoRecords.length} abastecimento(s), ${stats.demoOilChanges.length} troca(s) de óleo e ${stats.untouched.length} veículo(s) fictício(s). ${stats.converted.length} veículo(s) convertido(s) em oficiais foram preservados.`,
+    'system',
+    'demo-cleanup',
+    {
+      records:stats.demoRecords.length,
+      oilChanges:stats.demoOilChanges.length,
+      removedVehicles:stats.untouched.map(v=>({id:v.id,name:v.name,plate:v.plate})),
+      preservedVehicles:stats.converted.map(v=>({id:v.id,name:v.name,plate:v.plate}))
+    }
+  );
+
+  state.meta.demoPresentationSeedV23=false;
+  state.meta.demoDataRemovedAt=now;
   state.meta.lastLocalChange=now;
-  state.meta.testDataClearedAt=now;
   save();
   refreshAllViews();
+  renderDemoCleanupSummary();
   updateSyncUI();
 
-  addAudit('test_data_clear',`Limpeza de dados de teste executada: ${vehicleCount} veículo(s), ${recordCount} abastecimento(s) e ${oilCount} troca(s) de óleo removidos da operação.`,'system','test-cleanup',{vehicleCount,recordCount,oilCount});
   const cloudOk=await attemptCloudSync(false);
   if(cloudOk){
-    showToast('Dados de teste limpos. O app está pronto para os veículos reais.');
+    showToast('Demonstração removida. Veículos oficiais preservados.');
   }else{
-    showToast('Dados limpos neste aparelho. Há alterações pendentes para sincronizar.');
+    showToast('Limpeza feita neste aparelho. A sincronização continuará automaticamente.');
   }
 }
 
-$('clearTestDataBtn')?.addEventListener('click',clearTestData);
+$('clearDemoDataBtn')?.addEventListener('click',clearDemoDataSafely);
 window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
@@ -1970,7 +2041,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='32';
+const OLIVEIRA_APP_VERSION='33';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
