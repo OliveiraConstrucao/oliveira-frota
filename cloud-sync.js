@@ -26,11 +26,28 @@
     };
   }
   async function jsonFetch(url, options={}){
-    const res = await fetch(url, options);
+    let res;
+    try{
+      res = await fetch(url, options);
+    }catch(networkErr){
+      const err = new Error(networkErr?.message || 'NETWORK_REQUEST_FAILED');
+      err.code = 'NETWORK_REQUEST_FAILED';
+      err.httpStatus = 0;
+      err.endpoint = String(url).split('?')[0];
+      err.kind = 'network';
+      throw err;
+    }
+
     const data = await res.json().catch(() => ({}));
     if(!res.ok){
-      const msg = data?.error?.message || data?.error?.status || `HTTP ${res.status}`;
-      throw new Error(msg);
+      const msg = data?.error?.message || data?.error?.status || `HTTP_${res.status}`;
+      const err = new Error(msg);
+      err.code = msg;
+      err.httpStatus = res.status;
+      err.endpoint = String(url).split('?')[0];
+      err.kind = 'firebase';
+      err.response = data;
+      throw err;
     }
     return data;
   }

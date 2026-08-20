@@ -346,6 +346,73 @@ async function attemptCloudSync(manual=false){
   }catch(err){ console.error(err); if(manual) showToast('Não foi possível sincronizar agora.'); return false; }
   finally{ state.syncing=false; updateSyncUI(); }
 }
+
+function firebaseErrorExplanation(code){
+  const c=String(code||'').toUpperCase();
+  if(c.includes('INVALID_LOGIN_CREDENTIALS') || c.includes('INVALID_PASSWORD') || c.includes('EMAIL_NOT_FOUND')){
+    return 'O Firebase recusou as credenciais. Confira se o e-mail é exatamente o usuário criado em Authentication e redefina a senha se necessário.';
+  }
+  if(c.includes('OPERATION_NOT_ALLOWED')){
+    return 'O provedor E-mail/senha não está habilitado no Firebase Authentication.';
+  }
+  if(c.includes('API_KEY_INVALID') || c.includes('API_KEY_NOT_VALID')){
+    return 'A chave da API configurada no site não foi aceita pelo Firebase.';
+  }
+  if(c.includes('API_KEY_HTTP_REFERRER_BLOCKED') || c.includes('REQUEST_DENIED')){
+    return 'A chave da API está bloqueando este domínio/origem. Será necessário revisar as restrições da chave no Google Cloud.';
+  }
+  if(c.includes('TOO_MANY_ATTEMPTS_TRY_LATER')){
+    return 'O Firebase bloqueou temporariamente novas tentativas por excesso de logins. Aguarde alguns minutos e tente novamente.';
+  }
+  if(c.includes('USER_DISABLED')){
+    return 'Esse usuário está desativado no Firebase Authentication.';
+  }
+  if(c.includes('NETWORK_REQUEST_FAILED') || c.includes('FAILED TO FETCH') || c.includes('LOAD FAILED')){
+    return 'O navegador não conseguiu alcançar o serviço do Firebase. Pode ser conexão, bloqueador, DNS, extensão do navegador ou política de rede.';
+  }
+  if(c.includes('PROJECT_NOT_FOUND')){
+    return 'O projeto configurado no app não foi encontrado.';
+  }
+  return 'O Firebase devolveu um erro específico. Use o código abaixo para identificarmos a causa exata.';
+}
+function setCloudDiagnostic(err=null, successMessage=''){
+  const box=$('cloudDiagnostic');
+  if(!box) return;
+  if(!err && !successMessage){ box.classList.add('hidden'); return; }
+
+  const cfg=window.OLIVEIRA_FIREBASE_CONFIG||{};
+  const code=err ? String(err.code||err.message||'ERRO_DESCONHECIDO') : 'OK';
+  const http=err ? String(err.httpStatus ?? '—') : '200';
+  const explanation=err ? firebaseErrorExplanation(code) : successMessage;
+
+  $('cloudDiagnosticTitle').textContent=err?'Falha ao conectar ao Firebase':'Firebase conectado';
+  $('cloudDiagnosticMessage').textContent=explanation;
+  $('cloudDiagnosticCode').textContent=code;
+  $('cloudDiagnosticHttp').textContent=http;
+  $('cloudDiagnosticProject').textContent=cfg.projectId||'—';
+  $('cloudDiagnosticOrigin').textContent=location.origin;
+  box.classList.toggle('success',!err);
+  box.classList.remove('hidden');
+}
+function diagnosticText(){
+  return [
+    'Oliveira Frota — Diagnóstico Firebase',
+    `Código: ${$('cloudDiagnosticCode')?.textContent||'—'}`,
+    `HTTP: ${$('cloudDiagnosticHttp')?.textContent||'—'}`,
+    `Projeto: ${$('cloudDiagnosticProject')?.textContent||'—'}`,
+    `Origem: ${$('cloudDiagnosticOrigin')?.textContent||'—'}`,
+    `Mensagem: ${$('cloudDiagnosticMessage')?.textContent||'—'}`
+  ].join('\\n');
+}
+$('copyDiagnosticBtn')?.addEventListener('click',async()=>{
+  try{
+    await navigator.clipboard.writeText(diagnosticText());
+    showToast('Diagnóstico copiado.');
+  }catch{
+    showToast('Não foi possível copiar. Tire uma captura desta tela.');
+  }
+});
+
 $('cloudLoginForm')?.addEventListener('submit',async e=>{
   e.preventDefault();
   const adapter=window.OLIVEIRA_CLOUD_ADAPTER;
@@ -356,23 +423,28 @@ $('cloudLoginForm')?.addEventListener('submit',async e=>{
   const btn=$('cloudLoginBtn');
   btn.disabled=true; btn.textContent='Conectando...';
   try{
+    setCloudDiagnostic(null,'');
     await adapter.signIn(email,password);
     $('cloudPassword').value='';
     updateSyncUI();
+    setCloudDiagnostic(null,'Login aceito pelo Firebase. Agora o app pode sincronizar os dados.');
     showToast('Nuvem conectada.');
     await attemptCloudSync(false);
   }catch(err){
-    console.error(err);
-    const msg=String(err?.message||'');
+    console.error('Firebase login diagnostic:',err);
+    setCloudDiagnostic(err);
+    const msg=String(err?.code||err?.message||'');
     if(msg.includes('INVALID_LOGIN_CREDENTIALS') || msg.includes('INVALID_PASSWORD') || msg.includes('EMAIL_NOT_FOUND')) showToast('E-mail ou senha inválidos.');
     else if(msg.includes('USER_DISABLED')) showToast('Usuário Firebase desativado.');
-    else showToast('Não foi possível conectar ao Firebase.');
+    else if(msg.includes('NETWORK_REQUEST_FAILED') || msg.includes('Failed to fetch')) showToast('Falha de rede ao acessar o Firebase.');
+    else showToast(`Firebase: ${msg || 'erro desconhecido'}`);
   }finally{
     btn.disabled=false; btn.textContent='Conectar nuvem'; updateSyncUI();
   }
 });
 $('cloudLogoutBtn')?.addEventListener('click',()=>{
   window.OLIVEIRA_CLOUD_ADAPTER?.signOut?.();
+  setCloudDiagnostic(null,'');
   updateSyncUI();
   showToast('Conta da nuvem desconectada.');
 });

@@ -240,6 +240,20 @@
           </div>
           <button id="cloudLogoutBtn" class="btn btn-secondary" type="button">Sair da nuvem</button>
         </div>
+
+        <div id="cloudDiagnostic" class="cloud-diagnostic hidden" role="status" aria-live="polite">
+          <div class="cloud-diagnostic-title">
+            <strong id="cloudDiagnosticTitle">Diagnóstico Firebase</strong>
+            <button id="copyDiagnosticBtn" class="mini-copy-btn" type="button">Copiar diagnóstico</button>
+          </div>
+          <div id="cloudDiagnosticMessage" class="cloud-diagnostic-message"></div>
+          <dl class="cloud-diagnostic-grid">
+            <div><dt>Código</dt><dd id="cloudDiagnosticCode">—</dd></div>
+            <div><dt>HTTP</dt><dd id="cloudDiagnosticHttp">—</dd></div>
+            <div><dt>Projeto</dt><dd id="cloudDiagnosticProject">—</dd></div>
+            <div><dt>Origem</dt><dd id="cloudDiagnosticOrigin">—</dd></div>
+          </dl>
+        </div>
       </section>
 
       <div class="data-actions">

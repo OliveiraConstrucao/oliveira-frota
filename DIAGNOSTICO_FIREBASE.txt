@@ -1,0 +1,20 @@
+OLIVEIRA FROTA — V10 DIAGNÓSTICO FIREBASE
+
+Esta versão mostra o erro real devolvido pelo Firebase.
+
+COMO TESTAR
+1. Publique todo o conteúdo no GitHub.
+2. Abra:
+   https://oliveiraconstrucao.github.io/oliveira-frota/?v=10
+3. Vá em Dados > Firebase.
+4. Informe e-mail e senha.
+5. Clique em Conectar nuvem.
+6. Se falhar, aparecerá dentro da janela:
+   - Código
+   - HTTP
+   - Projeto
+   - Origem
+   - Explicação
+7. Tire uma captura dessa área ou use "Copiar diagnóstico".
+
+A senha nunca é exibida no diagnóstico.

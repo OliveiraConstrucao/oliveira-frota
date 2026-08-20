@@ -112,3 +112,17 @@ button{cursor:pointer}
   .cloud-login-form .btn{width:100%}
   .cloud-logged-area{align-items:flex-start;flex-direction:column}
 }
+
+.cloud-diagnostic{margin-top:12px;border:1px solid #e3b2ae;background:#fff3f2;border-radius:14px;padding:12px;color:#72251f}
+.cloud-diagnostic.success{border-color:#b9dfc5;background:#eef8f1;color:#225f35}
+.cloud-diagnostic-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.cloud-diagnostic-message{font-size:12px;line-height:1.45;margin-bottom:10px}
+.cloud-diagnostic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.cloud-diagnostic-grid>div{background:rgba(255,255,255,.68);border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:8px;min-width:0}
+.cloud-diagnostic-grid dt{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
+.cloud-diagnostic-grid dd{margin:3px 0 0;font-size:11px;font-weight:800;overflow-wrap:anywhere}
+.mini-copy-btn{border:1px solid currentColor;background:transparent;color:inherit;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}
+@media(max-width:560px){
+  .cloud-diagnostic-grid{grid-template-columns:1fr}
+  .cloud-diagnostic-title{align-items:flex-start}
+}
