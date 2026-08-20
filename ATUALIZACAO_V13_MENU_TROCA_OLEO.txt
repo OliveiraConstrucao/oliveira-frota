@@ -1,0 +1,46 @@
+OLIVEIRA FROTA — V13
+
+ALTERAÇÕES PRINCIPAIS
+
+1. Navegação principal:
+   INÍCIO | ABASTECER | MENU
+
+2. O MENU concentra as opções secundárias:
+   - Troca de óleo
+   - Histórico e PDF
+   - Administração
+   Novas funções poderão ser adicionadas neste mesmo menu no futuro.
+
+3. Abastecimento diário ficou mais rápido:
+   - Veículo
+   - KM atual
+   - Litros
+   - Conferir e salvar
+   A data é automática.
+   O km/l é calculado automaticamente.
+   Troca de óleo NÃO é mais digitada no abastecimento.
+
+4. Troca de óleo virou um lançamento separado, acessível aos funcionários:
+   - Veículo
+   - KM em que a troca foi realizada
+   - KM da próxima troca
+   - Data automática
+   - Conferência e salvamento
+
+5. O app continua acompanhando a troca de óleo.
+   Ao abastecer, pode mostrar apenas um aviso quando a troca estiver próxima ou vencida.
+
+6. Compatibilidade:
+   - veículos e abastecimentos existentes são preservados;
+   - referências antigas de troca de óleo continuam sendo reconhecidas;
+   - novas trocas usam a coleção oilChanges;
+   - Firebase, offline, backup e sincronização foram atualizados para incluir as trocas de óleo.
+
+PUBLICAÇÃO
+1. Extraia este ZIP.
+2. Envie TODO o conteúdo ao GitHub em OliveiraConstrucao/oliveira-frota.
+3. Substitua os arquivos existentes.
+4. Faça Commit changes.
+5. Aguarde o GitHub Pages atualizar.
+6. Abra:
+   https://oliveiraconstrucao.github.io/oliveira-frota/?v=13

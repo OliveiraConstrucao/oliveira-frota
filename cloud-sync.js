@@ -203,9 +203,11 @@
 
     let vehicles = (payload.vehicles || []).map(v => withUpdatedAt(v));
     let records = (payload.records || []).map(r => withUpdatedAt(r));
+    let oilChanges = (payload.oilChanges || []).map(r => withUpdatedAt(r));
 
     const vehicleMap = new Map(vehicles.map(v => [v.id, v]));
     const recordMap = new Map(records.map(r => [r.id, r]));
+    const oilChangeMap = new Map(oilChanges.map(r => [r.id, r]));
     const q = Array.isArray(payload.queue) ? payload.queue : [];
 
     const snapshot = q.some(item => item.entityType === 'snapshot');
@@ -213,6 +215,7 @@
     if(snapshot){
       for(const v of vehicles) await upsert('vehicles', v);
       for(const r of records) await upsert('records', r);
+      for(const o of oilChanges) await upsert('oilChanges', o);
     }else{
       for(const item of q){
         if(item.entityType === 'vehicle'){
@@ -221,25 +224,32 @@
         }else if(item.entityType === 'record'){
           const r = recordMap.get(item.entityId);
           if(r) await upsert('records', {...r, updatedAt:r.updatedAt || item.updatedAt});
+        }else if(item.entityType === 'oilChange'){
+          const o = oilChangeMap.get(item.entityId);
+          if(o) await upsert('oilChanges', {...o, updatedAt:o.updatedAt || item.updatedAt});
         }
       }
     }
 
-    const [remoteVehicles, remoteRecords] = await Promise.all([
+    const [remoteVehicles, remoteRecords, remoteOilChanges] = await Promise.all([
       listAll('vehicles'),
-      listAll('records')
+      listAll('records'),
+      listAll('oilChanges')
     ]);
 
     vehicles = mergeByUpdatedAt(vehicles, remoteVehicles);
     records = mergeByUpdatedAt(records, remoteRecords);
+    oilChanges = mergeByUpdatedAt(oilChanges, remoteOilChanges);
 
     // Envia itens locais ainda inexistentes na nuvem após o merge.
     const remoteVehicleIds = new Set(remoteVehicles.map(v => v.id));
     const remoteRecordIds = new Set(remoteRecords.map(r => r.id));
+    const remoteOilChangeIds = new Set(remoteOilChanges.map(r => r.id));
     for(const v of vehicles) if(!remoteVehicleIds.has(v.id)) await upsert('vehicles', v);
     for(const r of records) if(!remoteRecordIds.has(r.id)) await upsert('records', r);
+    for(const o of oilChanges) if(!remoteOilChangeIds.has(o.id)) await upsert('oilChanges', o);
 
-    return {vehicles, records};
+    return {vehicles, records, oilChanges};
   }
 
   window.OLIVEIRA_CLOUD_ADAPTER = {

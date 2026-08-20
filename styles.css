@@ -256,3 +256,36 @@ button{cursor:pointer}
   .admin-menu-card{padding:17px}
   .bottom-nav{bottom:8px}
 }
+
+
+/* =========================================================
+   V13 — MENU GERAL + TROCA DE ÓLEO SEPARADA
+   ========================================================= */
+.menu-intro{margin-bottom:14px}
+.menu-feature-card{min-height:132px;justify-content:center}
+.menu-feature-card:first-child{border:2px solid #e3bd70;background:#fffaf0}
+.menu-feature-card:first-child .admin-menu-icon{font-size:34px}
+.oil-main-card{
+  background:#fff;border:1px solid var(--line);border-radius:24px;padding:24px;
+  box-shadow:var(--shadow);margin-bottom:20px
+}
+.oil-main-card h2{font-size:32px;margin:5px 0 8px}
+.oil-main-card>p{color:var(--muted);margin:0 0 18px;line-height:1.45}
+.oil-action-btn{background:#9a6a18;box-shadow:0 12px 28px rgba(154,106,24,.22)}
+.oil-status-head{margin-top:10px}
+.oil-status-card .list-card-main p+p{margin-top:4px}
+.oil-record-step{display:none;min-height:340px}
+.oil-record-step.active{display:block}
+.oil-wizard-progress span{background:#c8922e}
+.record-oil-info{
+  margin-top:14px;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;
+  border:1px solid #efd38e;background:#fff6d9;color:#765207;font-size:12px
+}
+.record-oil-info strong{font-size:12px}
+.record-oil-info.overdue{border-color:#e0aaa4;background:#fff0ee;color:#8f2e2f}
+.simple-bottom-nav .nav-item[data-nav="menu"] span{font-size:20px}
+
+@media(max-width:560px){
+  .oil-main-card{padding:20px 16px}
+  .menu-feature-card{min-height:110px}
+}

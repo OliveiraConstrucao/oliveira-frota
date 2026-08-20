@@ -1,5 +1,5 @@
-const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
-const state = { vehicles: [], records: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1 };
+const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', oilChanges: 'oliveira_frota_oil_changes_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
+const state = { vehicles: [], records: [], oilChanges: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1, oilStep: 1 };
 
 const $ = (id) => document.getElementById(id);
 const todayISO = () => new Date().toISOString().slice(0,10);
@@ -15,12 +15,14 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${M
 function load(){
   try { state.vehicles = JSON.parse(localStorage.getItem(KEYS.vehicles)) || []; } catch { state.vehicles = []; }
   try { state.records = JSON.parse(localStorage.getItem(KEYS.records)) || []; } catch { state.records = []; }
+  try { state.oilChanges = JSON.parse(localStorage.getItem(KEYS.oilChanges)) || []; } catch { state.oilChanges = []; }
   try { state.syncQueue = JSON.parse(localStorage.getItem(KEYS.queue)) || []; } catch { state.syncQueue = []; }
   try { state.meta = JSON.parse(localStorage.getItem(KEYS.meta)) || {}; } catch { state.meta = {}; }
 }
 function save(){
   localStorage.setItem(KEYS.vehicles, JSON.stringify(state.vehicles));
   localStorage.setItem(KEYS.records, JSON.stringify(state.records));
+  localStorage.setItem(KEYS.oilChanges, JSON.stringify(state.oilChanges));
   localStorage.setItem(KEYS.queue, JSON.stringify(state.syncQueue));
   localStorage.setItem(KEYS.meta, JSON.stringify(state.meta));
 }
@@ -30,7 +32,9 @@ function queueChange(entityType, entityId){
     ? state.vehicles.find(v=>v.id===entityId)
     : entityType==='record'
       ? state.records.find(r=>r.id===entityId)
-      : null;
+      : entityType==='oilChange'
+        ? state.oilChanges.find(r=>r.id===entityId)
+        : null;
   if(target) target.updatedAt=now;
   state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===entityId));
   state.syncQueue.push({id:uuid(),entityType,entityId,updatedAt:now});
@@ -41,17 +45,36 @@ function queueChange(entityType, entityId){
 }
 
 function getVehicle(id){ return state.vehicles.find(v => v.id === id); }
-function vehicleRecords(id){ return state.records.filter(r => r.vehicleId === id).sort((a,b) => (b.date+b.createdAt).localeCompare(a.date+a.createdAt)); }
+function vehicleRecords(id){ return state.records.filter(r => r.vehicleId === id).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
 function lastRecord(id){ return vehicleRecords(id)[0] || null; }
+function vehicleOilChanges(id){ return state.oilChanges.filter(r => r.vehicleId === id).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
+function latestOilChange(id){ return vehicleOilChanges(id)[0] || null; }
+function oilReference(id){
+  const change=latestOilChange(id);
+  if(change && Number.isFinite(Number(change.nextOdometer))){
+    return {nextOdometer:Number(change.nextOdometer), changeOdometer:Number(change.odometer), date:change.date, source:'maintenance'};
+  }
+  const legacy=vehicleRecords(id).find(r=>Number.isFinite(Number(r.oil)) && Number(r.oil)>0);
+  if(legacy){
+    return {nextOdometer:Number(legacy.oil), changeOdometer:null, date:legacy.date, source:'legacy'};
+  }
+  return null;
+}
+function currentVehicleOdometer(id){
+  const fuel=lastRecord(id);
+  const oil=latestOilChange(id);
+  const vals=[Number(fuel?.odometer),Number(oil?.odometer)].filter(Number.isFinite);
+  return vals.length ? Math.max(...vals) : null;
+}
 function oilStatus(v){
-  const r = lastRecord(v.id);
-  if (!r) return {type:'none', label:'Sem registros', delta:null};
-  const odo = Number(r.odometer), oil = Number(r.oil);
-  if (!Number.isFinite(odo) || !Number.isFinite(oil)) return {type:'none', label:'Sem referência', delta:null};
-  const d = oil - odo;
-  if (d < 0) return {type:'overdue', label:`Vencida há ${Math.abs(d).toLocaleString('pt-BR')} km`, delta:d};
-  if (d <= 1000) return {type:'soon', label:`Faltam ${d.toLocaleString('pt-BR')} km`, delta:d};
-  return {type:'ok', label:`Faltam ${d.toLocaleString('pt-BR')} km`, delta:d};
+  const ref=oilReference(v.id);
+  const current=currentVehicleOdometer(v.id);
+  if(!ref) return {type:'none', label:'Sem troca cadastrada', delta:null, next:null, current};
+  if(!Number.isFinite(current)) return {type:'none', label:`Próxima: ${ref.nextOdometer.toLocaleString('pt-BR')} km`, delta:null, next:ref.nextOdometer, current:null};
+  const d=ref.nextOdometer-current;
+  if(d < 0) return {type:'overdue', label:`Vencida há ${Math.abs(d).toLocaleString('pt-BR')} km`, delta:d, next:ref.nextOdometer, current};
+  if(d <= 1000) return {type:'soon', label:`Faltam ${d.toLocaleString('pt-BR')} km`, delta:d, next:ref.nextOdometer, current};
+  return {type:'ok', label:`Faltam ${d.toLocaleString('pt-BR')} km`, delta:d, next:ref.nextOdometer, current};
 }
 
 function showToast(msg){
@@ -81,11 +104,12 @@ function nav(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===view));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.nav===view));
   if(view==='record') prepRecord();
+  if(view==='oil-record') prepOilRecord();
   if(view==='vehicles') renderVehicles();
   if(view==='history') renderHistory();
   if(view==='oil') renderOil();
   if(view==='home') renderHome();
-  if(view==='admin') updateSyncUI();
+  if(view==='admin' || view==='menu') updateSyncUI();
   window.scrollTo({top:0,behavior:'smooth'});
   history.replaceState(null,'',`#${view}`);
 }
@@ -147,11 +171,6 @@ function updatePlate(){
       ? `Último registro: ${Number(prev.odometer).toLocaleString('pt-BR')} km. Digite o número que aparece no painel agora.`
       : 'Primeiro registro deste veículo. Digite o número que aparece no painel.';
   }
-  if($('oilSimpleHelp')){
-    $('oilSimpleHelp').textContent=prev?.oil
-      ? `Último valor salvo: ${Number(prev.oil).toLocaleString('pt-BR')} km. Se não mudou, pode deixar assim.`
-      : 'Informe a quilometragem da próxima troca de óleo.';
-  }
 }
 function prepRecord(vehicleId=null){
   // Por segurança operacional, um novo lançamento normal sempre começa
@@ -164,8 +183,6 @@ function prepRecord(vehicleId=null){
   $('recordLiters').value='';
   $('recordQuantity').value='';
   $('recordWarning').classList.add('hidden');
-  const r=lastRecord(chosen);
-  $('recordOil').value=r?.oil || '';
   updatePlate();
   updateConsumption();
   setRecordStep(chosen ? 2 : 1);
@@ -173,8 +190,6 @@ function prepRecord(vehicleId=null){
 $('recordVehicle').addEventListener('change',()=>{
   state.currentVehicleId=$('recordVehicle').value || null;
   updatePlate();
-  const r=lastRecord($('recordVehicle').value);
-  $('recordOil').value=r?.oil || '';
   checkOdometer();
   updateConsumption();
 });
@@ -218,7 +233,7 @@ function updateConsumption(){
 }
 
 function setRecordStep(step){
-  const max=5;
+  const max=4;
   state.recordStep=Math.max(1,Math.min(max,step));
   document.querySelectorAll('.record-step').forEach(el=>el.classList.toggle('active',Number(el.dataset.step)===state.recordStep));
   if($('wizardProgressText')) $('wizardProgressText').textContent=`Etapa ${state.recordStep} de ${max}`;
@@ -250,11 +265,7 @@ function validateRecordStep(step){
     const liters=Number($('recordLiters').value);
     if(!Number.isFinite(liters) || liters<=0){ showToast('Digite quantos litros foram abastecidos.'); return false; }
   }
-  if(step===4){
-    const oil=Number($('recordOil').value);
-    if(!Number.isFinite(oil) || oil<=0){ showToast('Informe a próxima troca de óleo.'); return false; }
-    if(!$('recordDate').value){ $('recordDate').value=todayISO(); }
-  }
+  if(step===3 && !$('recordDate').value) $('recordDate').value=todayISO();
   return true;
 }
 function updateRecordConfirmation(){
@@ -265,8 +276,16 @@ function updateRecordConfirmation(){
   $('confirmOdometer').textContent=$('recordOdometer').value ? `${Number($('recordOdometer').value).toLocaleString('pt-BR')} km` : '—';
   $('confirmLiters').textContent=$('recordLiters').value ? `${Number($('recordLiters').value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L` : '—';
   $('confirmConsumption').textContent=consumption===null?'Será calculado no próximo registro':`${consumption.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l`;
-  $('confirmOil').textContent=$('recordOil').value ? `${Number($('recordOil').value).toLocaleString('pt-BR')} km` : '—';
   $('confirmDate').textContent=fmtDate($('recordDate').value);
+  const oilBox=$('recordOilInfo');
+  const s=v?oilStatus(v):null;
+  if(oilBox && s && ['soon','overdue'].includes(s.type)){
+    oilBox.innerHTML=`<strong>${s.type==='overdue'?'⚠ TROCA DE ÓLEO VENCIDA':'⚠ TROCA DE ÓLEO PRÓXIMA'}</strong><span>${escapeHTML(s.label)}. O abastecimento pode ser salvo normalmente.</span>`;
+    oilBox.className=`record-oil-info ${s.type}`;
+  }else if(oilBox){
+    oilBox.className='record-oil-info hidden';
+    oilBox.innerHTML='';
+  }
 }
 document.addEventListener('click',e=>{
   const choice=e.target.closest('.vehicle-choice');
@@ -307,10 +326,12 @@ $('recordForm').addEventListener('submit',e=>{
   if(!Number.isFinite(liters) || liters<=0) return showToast('Informe os litros abastecidos.');
   if(prev && odo <= Number(prev.odometer)) return showToast('O odômetro deve ser maior que o último registro.');
   const consumption=updateConsumption();
+  const oilRef=oilReference(v.id);
+  const now=new Date().toISOString();
   const record={
     id:uuid(), vehicleId:v.id, vehicle:v.name, plate:v.plate,
-    odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value,
-    oil:Number($('recordOil').value), createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+    odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value || todayISO(),
+    oil:oilRef?.nextOdometer || '', createdAt:now, updatedAt:now
   };
   state.records.push(record);
   queueChange('record',record.id);
@@ -318,7 +339,7 @@ $('recordForm').addEventListener('submit',e=>{
   renderHome();
   showRecordSuccess(v,record);
   e.target.reset();
-  prepRecord(v.id);
+  prepRecord();
 });
 
 function renderVehicles(){
@@ -327,7 +348,7 @@ function renderVehicles(){
     return `<article class="card vehicle-card">
       <div class="vehicle-card-head"><div><h3>${escapeHTML(v.name)}</h3><div class="plate">${escapeHTML(v.plate)}</div></div><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div>
       <div class="card-row"><span class="muted">Último odômetro</span><strong>${r?fmtKm(r.odometer):'—'}</strong></div>
-      <div class="card-row"><span class="muted">Troca de óleo</span><strong>${r?fmtKm(r.oil):'—'}</strong></div>
+      <div class="card-row"><span class="muted">Próxima troca de óleo</span><strong>${s.next?fmtKm(s.next):'—'}</strong></div>
       <button class="btn btn-secondary btn-block" onclick="openVehicleDetail('${v.id}')">Abrir ficha</button>
     </article>`;
   }).join('') : '<div class="empty">Nenhum veículo cadastrado.</div>';
@@ -342,7 +363,7 @@ window.openVehicleDetail=(id)=>{
       <div class="detail-box"><span>Litros abastecidos</span><strong>${r?fmtLiters(r.liters):'—'}</strong></div>
       <div class="detail-box"><span>Quant. por litro</span><strong>${r?escapeHTML(fmtConsumption(r.quantity)):'—'}</strong></div>
       <div class="detail-box"><span>Última data</span><strong>${r?fmtDate(r.date):'—'}</strong></div>
-      <div class="detail-box"><span>Troca de óleo</span><strong>${r?fmtKm(r.oil):'—'}</strong></div>
+      <div class="detail-box"><span>Próxima troca de óleo</span><strong>${s.next?fmtKm(s.next):'—'}</strong></div>
     </div>
   </article>
   <div class="section-head" style="margin-top:22px"><div><span class="eyebrow">RECENTES</span><h3>Últimos registros</h3></div></div>
@@ -368,7 +389,7 @@ function historyCard(r){
       <div><span class="muted">Odômetro</span><strong>${fmtKm(r.odometer)}</strong></div>
       <div><span class="muted">Litros</span><strong>${fmtLiters(r.liters)}</strong></div>
       <div><span class="muted">Quant./litro</span><strong>${escapeHTML(fmtConsumption(r.quantity))}</strong></div>
-      <div><span class="muted">Troca óleo</span><strong>${fmtKm(r.oil)}</strong></div>
+      <div><span class="muted">Próx. troca óleo</span><strong>${r.oil?fmtKm(r.oil):'—'}</strong></div>
     </div>
   </article>`;
 }
@@ -380,8 +401,146 @@ function renderHistory(){
 $('historySearch').addEventListener('input',renderHistory); $('historyDate').addEventListener('change',renderHistory);
 $('clearFilters').addEventListener('click',()=>{$('historySearch').value='';$('historyDate').value='';renderHistory();});
 
-function oilCard(v,s){ const r=lastRecord(v.id); return `<article class="list-card"><div class="list-card-main"><h4>${escapeHTML(v.name)} <span class="plate">${escapeHTML(v.plate)}</span></h4><p>Atual: ${r?fmtKm(r.odometer):'—'} • Troca: ${r?fmtKm(r.oil):'—'}</p></div><div class="list-meta"><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div></article>`; }
-function renderOil(){ $('oilList').innerHTML=state.vehicles.length?state.vehicles.map(v=>oilCard(v,oilStatus(v))).join(''):'<div class="empty">Nenhum veículo cadastrado.</div>'; }
+function oilCard(v,s){
+  const change=latestOilChange(v.id);
+  const legacy=oilReference(v.id);
+  const current=currentVehicleOdometer(v.id);
+  const lastLine=change
+    ? `Última troca: ${fmtDate(change.date)} • ${fmtKm(change.odometer)}`
+    : legacy?.source==='legacy'
+      ? `Referência antiga: próxima troca em ${fmtKm(legacy.nextOdometer)}`
+      : 'Nenhuma troca registrada';
+  return `<article class="list-card oil-status-card">
+    <div class="list-card-main">
+      <h4>${escapeHTML(v.name)} <span class="plate">${escapeHTML(v.plate)}</span></h4>
+      <p>${lastLine}</p>
+      <p>KM atual: ${current===null?'—':fmtKm(current)} • Próxima: ${s.next?fmtKm(s.next):'—'}</p>
+    </div>
+    <div class="list-meta"><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div>
+  </article>`;
+}
+function renderOil(){
+  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  $('oilList').innerHTML=list.length?list.map(v=>oilCard(v,oilStatus(v))).join(''):'<div class="empty">Nenhum veículo cadastrado.</div>';
+}
+
+function renderOilVehicleOptions(selected=''){
+  const sel=$('oilVehicle');
+  if(!sel) return;
+  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  sel.innerHTML='<option value="">Selecione</option>'+list.map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
+  const box=$('oilVehicleChoices');
+  if(box){
+    box.innerHTML=list.map(v=>`
+      <button type="button" class="vehicle-choice oil-vehicle-choice ${selected===v.id?'selected':''}" data-oil-vehicle-id="${v.id}">
+        <span class="vehicle-choice-icon">🚚</span>
+        <span class="vehicle-choice-text"><strong>${escapeHTML(v.name)}</strong><small>${escapeHTML(v.plate)}</small></span>
+        <span class="vehicle-choice-check">✓</span>
+      </button>`).join('');
+  }
+  if($('noOilVehicleSimple')) $('noOilVehicleSimple').classList.toggle('hidden',list.length>0);
+}
+function prepOilRecord(){
+  renderOilVehicleOptions('');
+  $('oilVehicle').value='';
+  $('oilOdometer').value='';
+  $('oilNextOdometer').value='';
+  $('oilDate').value=todayISO();
+  if($('oilLastKmHelp')) $('oilLastKmHelp').textContent='Digite a quilometragem do veículo no momento da troca.';
+  setOilStep(1);
+}
+function setOilStep(step){
+  const max=4;
+  state.oilStep=Math.max(1,Math.min(max,step));
+  document.querySelectorAll('.oil-record-step').forEach(el=>el.classList.toggle('active',Number(el.dataset.oilStep)===state.oilStep));
+  $('oilWizardProgressText').textContent=`Etapa ${state.oilStep} de ${max}`;
+  $('oilWizardProgressBar').style.width=`${(state.oilStep/max)*100}%`;
+  $('oilWizardBackBtn').textContent=state.oilStep===1?'← TROCA DE ÓLEO':'← VOLTAR';
+  $('oilWizardNextBtn').classList.toggle('hidden',state.oilStep===max);
+  $('oilWizardSaveBtn').classList.toggle('hidden',state.oilStep!==max);
+  if(state.oilStep===4) updateOilConfirmation();
+  setTimeout(()=>{
+    const input=document.querySelector(`.oil-record-step[data-oil-step="${state.oilStep}"] input:not([type="hidden"])`);
+    if(input && state.oilStep>1 && state.oilStep<4) input.focus({preventScroll:true});
+  },120);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function validateOilStep(step){
+  const vid=$('oilVehicle').value;
+  if(step===1 && !vid){ showToast('Toque no veículo que recebeu a troca.'); return false; }
+  if(step===2){
+    const odo=Number($('oilOdometer').value);
+    if(!Number.isFinite(odo) || odo<0){ showToast('Digite o KM da troca de óleo.'); return false; }
+    const current=currentVehicleOdometer(vid);
+    if(current!==null && odo<current-100){
+      showToast(`Confira o KM. O veículo tem referência recente de ${current.toLocaleString('pt-BR')} km.`);
+      return false;
+    }
+  }
+  if(step===3){
+    const odo=Number($('oilOdometer').value), next=Number($('oilNextOdometer').value);
+    if(!Number.isFinite(next) || next<=odo){ showToast('A próxima troca deve ser maior que o KM da troca atual.'); return false; }
+  }
+  return true;
+}
+function updateOilConfirmation(){
+  const v=getVehicle($('oilVehicle').value);
+  $('oilConfirmVehicle').textContent=v?.name || '—';
+  $('oilConfirmPlate').textContent=v?.plate || '—';
+  $('oilConfirmOdometer').textContent=$('oilOdometer').value?fmtKm(Number($('oilOdometer').value)):'—';
+  $('oilConfirmNext').textContent=$('oilNextOdometer').value?fmtKm(Number($('oilNextOdometer').value)):'—';
+  $('oilConfirmDate').textContent=fmtDate($('oilDate').value);
+}
+document.addEventListener('click',e=>{
+  const choice=e.target.closest('[data-oil-vehicle-id]');
+  if(!choice) return;
+  const id=choice.dataset.oilVehicleId;
+  $('oilVehicle').value=id;
+  renderOilVehicleOptions(id);
+  const current=currentVehicleOdometer(id);
+  if($('oilLastKmHelp')){
+    $('oilLastKmHelp').textContent=current===null
+      ? 'Digite a quilometragem do veículo no momento da troca.'
+      : `Última referência do veículo: ${current.toLocaleString('pt-BR')} km.`;
+  }
+  if(current!==null) $('oilOdometer').value=current;
+  setOilStep(2);
+});
+$('oilWizardNextBtn')?.addEventListener('click',()=>{ if(validateOilStep(state.oilStep)) setOilStep(state.oilStep+1); });
+$('oilWizardBackBtn')?.addEventListener('click',()=>{
+  if(state.oilStep===1) nav('oil');
+  else setOilStep(state.oilStep-1);
+});
+$('oilWizardExitBtn')?.addEventListener('click',()=>nav('oil'));
+$('oilForm')?.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(!validateOilStep(3)) return;
+  const v=getVehicle($('oilVehicle').value);
+  if(!v) return showToast('Selecione o veículo.');
+  const now=new Date().toISOString();
+  const change={
+    id:uuid(),
+    vehicleId:v.id,
+    vehicle:v.name,
+    plate:v.plate,
+    odometer:Number($('oilOdometer').value),
+    nextOdometer:Number($('oilNextOdometer').value),
+    date:$('oilDate').value || todayISO(),
+    createdAt:now,
+    updatedAt:now
+  };
+  state.oilChanges.push(change);
+  queueChange('oilChange',change.id);
+  if($('oilSuccessVehicle')) $('oilSuccessVehicle').textContent=`${v.name} • ${v.plate}`;
+  if($('oilSuccessDetails')) $('oilSuccessDetails').textContent=`Troca em ${fmtKm(change.odometer)} • próxima em ${fmtKm(change.nextOdometer)}`;
+  renderHome(); renderOil(); renderVehicles();
+  $('oilSuccessDialog')?.showModal();
+  e.target.reset();
+  prepOilRecord();
+});
+$('oilSuccessMenuBtn')?.addEventListener('click',()=>{ $('oilSuccessDialog').close(); nav('menu'); });
+$('oilSuccessAgainBtn')?.addEventListener('click',()=>{ $('oilSuccessDialog').close(); nav('oil-record'); });
+
 
 // ===== Offline, backup e sincronização =====
 function fmtDateTime(iso){
@@ -428,12 +587,12 @@ function updateSyncUI(){
   }
 }
 function refreshAllViews(){
-  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||'');
+  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||''); renderOilVehicleOptions($('oilVehicle')?.value||'');
 }
 function exportBackup(){
   const backup={
     app:'Oliveira Frota', backupVersion:1, exportedAt:new Date().toISOString(),
-    vehicles:state.vehicles, records:state.records
+    vehicles:state.vehicles, records:state.records, oilChanges:state.oilChanges
   };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -445,16 +604,18 @@ function exportBackup(){
   state.meta.lastBackupAt=new Date().toISOString(); save(); updateSyncUI(); showToast('Backup salvo com sucesso.');
 }
 function validBackup(data){
-  return data && Array.isArray(data.vehicles) && Array.isArray(data.records);
+  return data && Array.isArray(data.vehicles) && Array.isArray(data.records) && (data.oilChanges===undefined || Array.isArray(data.oilChanges));
 }
 async function importBackup(file){
   try{
     const text=await file.text(); const data=JSON.parse(text);
     if(!validBackup(data)) return showToast('Arquivo de backup inválido.');
-    if(!confirm(`Restaurar ${data.vehicles.length} veículo(s) e ${data.records.length} registro(s)? Os dados atuais serão substituídos.`)) return;
+    const oilCount=Array.isArray(data.oilChanges)?data.oilChanges.length:0;
+    if(!confirm(`Restaurar ${data.vehicles.length} veículo(s), ${data.records.length} abastecimento(s) e ${oilCount} troca(s) de óleo? Os dados atuais serão substituídos.`)) return;
     const now=new Date().toISOString();
     state.vehicles=data.vehicles.map(v=>({...v,updatedAt:v.updatedAt||v.createdAt||now}));
     state.records=data.records.map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
+    state.oilChanges=(data.oilChanges||[]).map(r=>({...r,updatedAt:r.updatedAt||r.createdAt||now}));
     state.syncQueue=[{id:uuid(),entityType:'snapshot',entityId:'all',updatedAt:now}];
     state.meta.lastRestoreAt=new Date().toISOString(); state.meta.lastLocalChange=state.meta.lastRestoreAt;
     save(); refreshAllViews(); updateSyncUI(); showToast('Backup restaurado.');
@@ -476,9 +637,10 @@ async function attemptCloudSync(manual=false){
   if(state.syncing) return false;
   state.syncing=true; updateSyncUI();
   try{
-    const result=await adapter.sync({vehicles:state.vehicles,records:state.records,queue:state.syncQueue,meta:state.meta});
+    const result=await adapter.sync({vehicles:state.vehicles,records:state.records,oilChanges:state.oilChanges,queue:state.syncQueue,meta:state.meta});
     if(result?.vehicles && Array.isArray(result.vehicles)) state.vehicles=result.vehicles;
     if(result?.records && Array.isArray(result.records)) state.records=result.records;
+    if(result?.oilChanges && Array.isArray(result.oilChanges)) state.oilChanges=result.oilChanges;
     state.syncQueue=[]; state.meta.lastSyncAt=new Date().toISOString(); save(); refreshAllViews();
     if(manual) showToast('Sincronização concluída.');
     return true;
@@ -601,7 +763,7 @@ window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline 
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
 $('installBtn')?.addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=12').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=13').catch(()=>{})); }
 
 load();
 updateSyncUI();
@@ -609,7 +771,7 @@ renderHome();
 renderVehicleOptions();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
-const initial=location.hash.replace('#',''); if(['home','record','admin','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
+const initial=location.hash.replace('#',''); if(['home','record','menu','admin','vehicles','history','oil','oil-record'].includes(initial)) nav(initial); else nav('home');
 
 // ===== Relatório em PDF por período =====
 function monthStartISO(){
@@ -740,7 +902,7 @@ function buildFleetPdf(records,start,end,vehicle){
         Number(r.odometer).toLocaleString('pt-BR'),
         truncateText(fmtConsumptionValue(r.quantity),22),
         fmtDate(r.date),
-        Number(r.oil).toLocaleString('pt-BR')
+        r.oil ? Number(r.oil).toLocaleString('pt-BR') : '—'
       ];
       for(let k=0;k<vals.length;k++) c+=txt(vals[k],xPositions[k]+6,top+11.8,8,false,ink);
       c+=hline(M,M+tableW,top+rowH,line,.45);

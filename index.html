@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#8f2e2f" />
-  <meta name="description" content="Controle simples de veículos, abastecimento, consumo por litro e troca de óleo da Oliveira Construção." />
+  <meta name="description" content="Controle simples de abastecimento e manutenção da frota da Oliveira Construção." />
 
   <!-- Prévia ao compartilhar no WhatsApp, Facebook e outros aplicativos -->
   <link rel="canonical" href="https://oliveiraconstrucao.github.io/oliveira-frota/" />
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Oliveira Frota" />
   <meta property="og:title" content="Oliveira Frota" />
-  <meta property="og:description" content="Controle de veículos, abastecimento, consumo por litro e troca de óleo da Oliveira Construção." />
+  <meta property="og:description" content="Controle de abastecimento e manutenção da frota da Oliveira Construção." />
   <meta property="og:url" content="https://oliveiraconstrucao.github.io/oliveira-frota/" />
   <meta property="og:image" content="https://oliveiraconstrucao.github.io/oliveira-frota/assets/icons/icon-512.png" />
   <meta property="og:image:secure_url" content="https://oliveiraconstrucao.github.io/oliveira-frota/assets/icons/icon-512.png" />
@@ -22,14 +22,14 @@
   <meta property="og:image:alt" content="Oliveira Frota - controle de frota da Oliveira Construção" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="Oliveira Frota" />
-  <meta name="twitter:description" content="Controle de veículos, abastecimento, consumo por litro e troca de óleo da Oliveira Construção." />
+  <meta name="twitter:description" content="Controle de abastecimento e manutenção da frota da Oliveira Construção." />
   <meta name="twitter:image" content="https://oliveiraconstrucao.github.io/oliveira-frota/assets/icons/icon-512.png" />
 
   <title>Oliveira Frota</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
   <div class="app-shell">
@@ -38,7 +38,7 @@
         <img src="assets/logo-oliveira.png" alt="Oliveira Construção" class="brand-logo" />
         <div>
           <h1>Oliveira Frota</h1>
-          <p>Abastecimento de veículos</p>
+          <p>Controle simples da frota</p>
         </div>
       </div>
       <div class="top-actions">
@@ -88,6 +88,7 @@
             <select id="recordVehicle" class="hidden" required></select>
             <input id="recordPlate" type="hidden" />
             <input id="recordQuantity" type="hidden" />
+            <input id="recordDate" type="hidden" />
 
             <section class="record-step active" data-step="1">
               <div class="wizard-question">
@@ -98,7 +99,7 @@
               <div id="simpleVehicleChoices" class="vehicle-choice-grid"></div>
               <div id="noVehicleSimple" class="simple-empty hidden">
                 <strong>Nenhum veículo cadastrado.</strong>
-                <span>Peça para a responsável cadastrar o veículo na Administração.</span>
+                <span>Peça para a responsável cadastrar o veículo em Menu → Administração.</span>
               </div>
             </section>
 
@@ -138,25 +139,6 @@
             <section class="record-step" data-step="4">
               <div class="wizard-question">
                 <span class="wizard-number">4</span>
-                <h2>Troca de óleo</h2>
-                <p>Confira a próxima quilometragem da troca.</p>
-              </div>
-
-              <label class="big-number-field">
-                <span>PRÓXIMA TROCA DE ÓLEO</span>
-                <input id="recordOil" type="number" min="0" step="1" inputmode="numeric" required placeholder="85000" />
-                <small id="oilSimpleHelp">Se já houver um valor salvo, ele aparece automaticamente.</small>
-              </label>
-
-              <label class="simple-date-field">
-                <span>Data do registro</span>
-                <input id="recordDate" type="date" required />
-              </label>
-            </section>
-
-            <section class="record-step" data-step="5">
-              <div class="wizard-question">
-                <span class="wizard-number">5</span>
                 <h2>Confira antes de salvar</h2>
                 <p>Se estiver tudo certo, toque em SALVAR.</p>
               </div>
@@ -167,9 +149,10 @@
                 <div><span>KM</span><strong id="confirmOdometer">—</strong></div>
                 <div><span>Litros</span><strong id="confirmLiters">—</strong></div>
                 <div><span>Consumo</span><strong id="confirmConsumption">—</strong></div>
-                <div><span>Troca de óleo</span><strong id="confirmOil">—</strong></div>
                 <div><span>Data</span><strong id="confirmDate">—</strong></div>
               </div>
+
+              <div id="recordOilInfo" class="record-oil-info hidden"></div>
             </section>
 
             <div class="wizard-actions">
@@ -181,28 +164,47 @@
         </div>
       </section>
 
+      <section id="view-menu" class="view" data-view="menu">
+        <div class="admin-intro menu-intro">
+          <span class="eyebrow">MENU</span>
+          <h2>Outras opções</h2>
+          <p>Escolha o que você precisa fazer.</p>
+        </div>
+
+        <div class="admin-menu-grid">
+          <button class="admin-menu-card menu-feature-card" data-nav="oil" type="button">
+            <span class="admin-menu-icon">🛢️</span>
+            <strong>Troca de óleo</strong>
+            <small>Registrar uma troca ou conferir quando vence</small>
+          </button>
+          <button class="admin-menu-card menu-feature-card" data-nav="history" type="button">
+            <span class="admin-menu-icon">📋</span>
+            <strong>Histórico e PDF</strong>
+            <small>Consultar registros e salvar relatório</small>
+          </button>
+          <button class="admin-menu-card menu-feature-card" data-nav="admin" type="button">
+            <span class="admin-menu-icon">⚙️</span>
+            <strong>Administração</strong>
+            <small>Veículos, backup e nuvem</small>
+          </button>
+        </div>
+      </section>
+
       <section id="view-admin" class="view" data-view="admin">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
+        </div>
         <div class="admin-intro">
           <span class="eyebrow">ADMINISTRAÇÃO</span>
           <h2>Área da responsável</h2>
-          <p>Cadastros, consultas, relatórios e configurações ficam aqui.</p>
+          <p>Cadastros e configurações do aplicativo.</p>
         </div>
 
         <div class="admin-menu-grid">
           <button class="admin-menu-card" data-nav="vehicles" type="button">
             <span class="admin-menu-icon">🚚</span>
             <strong>Veículos</strong>
-            <small>Cadastrar e consultar</small>
-          </button>
-          <button class="admin-menu-card" data-nav="history" type="button">
-            <span class="admin-menu-icon">📋</span>
-            <strong>Histórico e PDF</strong>
-            <small>Consultar e salvar relatórios</small>
-          </button>
-          <button class="admin-menu-card" data-nav="oil" type="button">
-            <span class="admin-menu-icon">🛢️</span>
-            <strong>Troca de óleo</strong>
-            <small>Acompanhar os veículos</small>
+            <small>Cadastrar e consultar veículos</small>
           </button>
           <button id="dataBtn" class="admin-menu-card" type="button">
             <span class="admin-menu-icon">☁️</span>
@@ -227,7 +229,7 @@
 
       <section id="view-history" class="view" data-view="history">
         <div class="page-head split admin-subhead">
-          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
           <button id="openPdfDialog" class="btn btn-primary" type="button">Salvar período em PDF</button>
         </div>
         <div class="page-title-simple"><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
@@ -243,10 +245,104 @@
 
       <section id="view-oil" class="view" data-view="oil">
         <div class="page-head admin-subhead">
-          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
         </div>
-        <div class="page-title-simple"><span class="eyebrow">MANUTENÇÃO</span><h2>Troca de óleo</h2></div>
+
+        <div class="oil-main-card">
+          <span class="eyebrow">MANUTENÇÃO</span>
+          <h2>Troca de óleo</h2>
+          <p>Quando o óleo for trocado, registre aqui. Não precisa informar isso nos abastecimentos.</p>
+          <button class="big-action-btn oil-action-btn" data-nav="oil-record" type="button">
+            <span class="big-action-icon">🛢️</span>
+            <span class="big-action-copy">
+              <strong>REGISTRAR TROCA DE ÓLEO</strong>
+              <small>Informe o veículo e a quilometragem.</small>
+            </span>
+            <span class="big-action-arrow">›</span>
+          </button>
+        </div>
+
+        <div class="section-head oil-status-head">
+          <div><span class="eyebrow">SITUAÇÃO</span><h3>Próximas trocas</h3></div>
+        </div>
         <div id="oilList" class="stack-list"></div>
+      </section>
+
+      <section id="view-oil-record" class="view" data-view="oil-record">
+        <div class="wizard-shell">
+          <div class="wizard-top">
+            <button id="oilWizardExitBtn" class="wizard-exit" type="button" aria-label="Voltar para troca de óleo">←</button>
+            <div class="wizard-progress-wrap">
+              <span id="oilWizardProgressText">Etapa 1 de 4</span>
+              <div class="wizard-progress oil-wizard-progress"><span id="oilWizardProgressBar"></span></div>
+            </div>
+          </div>
+
+          <form id="oilForm" class="wizard-card" autocomplete="off">
+            <select id="oilVehicle" class="hidden" required></select>
+            <input id="oilDate" type="hidden" />
+
+            <section class="oil-record-step active" data-oil-step="1">
+              <div class="wizard-question">
+                <span class="wizard-number">1</span>
+                <h2>Qual veículo?</h2>
+                <p>Toque no veículo que recebeu a troca de óleo.</p>
+              </div>
+              <div id="oilVehicleChoices" class="vehicle-choice-grid"></div>
+              <div id="noOilVehicleSimple" class="simple-empty hidden">
+                <strong>Nenhum veículo cadastrado.</strong>
+                <span>Peça para a responsável cadastrar o veículo em Menu → Administração.</span>
+              </div>
+            </section>
+
+            <section class="oil-record-step" data-oil-step="2">
+              <div class="wizard-question">
+                <span class="wizard-number">2</span>
+                <h2>Em qual KM foi feita a troca?</h2>
+                <p id="oilLastKmHelp">Digite a quilometragem do veículo no momento da troca.</p>
+              </div>
+              <label class="big-number-field">
+                <span>KM DA TROCA</span>
+                <input id="oilOdometer" type="number" min="0" step="1" inputmode="numeric" required placeholder="80000" />
+                <small>Digite somente os números.</small>
+              </label>
+            </section>
+
+            <section class="oil-record-step" data-oil-step="3">
+              <div class="wizard-question">
+                <span class="wizard-number">3</span>
+                <h2>Quando será a próxima?</h2>
+                <p>Digite a quilometragem da próxima troca de óleo.</p>
+              </div>
+              <label class="big-number-field">
+                <span>PRÓXIMA TROCA</span>
+                <input id="oilNextOdometer" type="number" min="0" step="1" inputmode="numeric" required placeholder="90000" />
+                <small>Exemplo: se a próxima for com 90.000 km, digite 90000.</small>
+              </label>
+            </section>
+
+            <section class="oil-record-step" data-oil-step="4">
+              <div class="wizard-question">
+                <span class="wizard-number">4</span>
+                <h2>Confira antes de salvar</h2>
+                <p>Se estiver tudo certo, toque em SALVAR.</p>
+              </div>
+              <div class="confirm-card">
+                <div><span>Veículo</span><strong id="oilConfirmVehicle">—</strong></div>
+                <div><span>Placa</span><strong id="oilConfirmPlate">—</strong></div>
+                <div><span>KM da troca</span><strong id="oilConfirmOdometer">—</strong></div>
+                <div><span>Próxima troca</span><strong id="oilConfirmNext">—</strong></div>
+                <div><span>Data</span><strong id="oilConfirmDate">—</strong></div>
+              </div>
+            </section>
+
+            <div class="wizard-actions">
+              <button id="oilWizardBackBtn" class="btn wizard-secondary" type="button">← VOLTAR</button>
+              <button id="oilWizardNextBtn" class="btn btn-primary wizard-primary" type="button">CONTINUAR →</button>
+              <button id="oilWizardSaveBtn" class="btn btn-primary wizard-primary hidden" type="submit">✓ SALVAR TROCA</button>
+            </div>
+          </form>
+        </div>
       </section>
 
       <section id="view-vehicle-detail" class="view" data-view="vehicle-detail">
@@ -261,7 +357,7 @@
     <nav class="bottom-nav simple-bottom-nav" aria-label="Navegação principal">
       <button class="nav-item active" data-nav="home"><span>⌂</span><small>Início</small></button>
       <button class="nav-item nav-main-action" data-nav="record"><span>⛽</span><small>Abastecer</small></button>
-      <button class="nav-item" data-nav="admin"><span>⚙</span><small>Administração</small></button>
+      <button class="nav-item" data-nav="menu"><span>☰</span><small>Menu</small></button>
     </nav>
   </div>
 
@@ -361,6 +457,20 @@
     </div>
   </dialog>
 
+  <dialog id="oilSuccessDialog" class="dialog success-dialog">
+    <div class="dialog-card success-dialog-card">
+      <div class="success-check">✓</div>
+      <h2>TROCA REGISTRADA</h2>
+      <p>A manutenção foi salva com sucesso.</p>
+      <div class="success-summary">
+        <strong id="oilSuccessVehicle">—</strong>
+        <span id="oilSuccessDetails">—</span>
+      </div>
+      <button id="oilSuccessAgainBtn" class="btn btn-primary btn-block" type="button">REGISTRAR OUTRA</button>
+      <button id="oilSuccessMenuBtn" class="btn btn-secondary btn-block success-home-btn" type="button">VOLTAR AO MENU</button>
+    </div>
+  </dialog>
+
   <dialog id="successDialog" class="dialog success-dialog">
     <div class="dialog-card success-dialog-card">
       <div class="success-check">✓</div>
@@ -376,8 +486,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="firebase-config.js?v=12" defer></script>
-  <script src="cloud-sync.js?v=12" defer></script>
-  <script src="app.js?v=12" defer></script>
+  <script src="firebase-config.js?v=13" defer></script>
+  <script src="cloud-sync.js?v=13" defer></script>
+  <script src="app.js?v=13" defer></script>
 </body>
 </html>
