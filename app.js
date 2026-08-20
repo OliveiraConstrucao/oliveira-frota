@@ -1461,7 +1461,7 @@ function offerInstallOnFirstVisit(){
   },1800);
 }
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=23').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=24').catch(()=>{})); }
 
 load();
 ensurePresentationDemoData();
@@ -1498,36 +1498,113 @@ $('closePdfDialog').addEventListener('click',()=>$('pdfDialog').close());
 $('pdfDialog').addEventListener('click',e=>{
   if(e.target===$('pdfDialog')) $('pdfDialog').close();
 });
+let currentPdfPreview=null;
+
+function clearCurrentPdfPreview(){
+  if(currentPdfPreview?.url){
+    URL.revokeObjectURL(currentPdfPreview.url);
+  }
+  currentPdfPreview=null;
+  const frame=$('pdfPreviewFrame');
+  if(frame) frame.removeAttribute('src');
+}
+function downloadCurrentPdf(){
+  if(!currentPdfPreview) return showToast('Gere o relatório primeiro.');
+  const a=document.createElement('a');
+  a.href=currentPdfPreview.url;
+  a.download=currentPdfPreview.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('Download do PDF iniciado.');
+}
+async function shareCurrentPdf(){
+  if(!currentPdfPreview) return showToast('Gere o relatório primeiro.');
+
+  try{
+    const file=new File(
+      [currentPdfPreview.blob],
+      currentPdfPreview.fileName,
+      {type:'application/pdf'}
+    );
+
+    if(!navigator.share){
+      showToast('Este navegador não permite compartilhar arquivos. Use “Baixar PDF”.');
+      return;
+    }
+
+    if(navigator.canShare && !navigator.canShare({files:[file]})){
+      showToast('Este navegador não permite compartilhar o PDF diretamente. Use “Baixar PDF”.');
+      return;
+    }
+
+    await navigator.share({
+      title:'Relatório Oliveira Frota',
+      text:currentPdfPreview.shareText,
+      files:[file]
+    });
+  }catch(err){
+    if(err?.name==='AbortError') return;
+    console.error(err);
+    showToast('Não foi possível compartilhar o PDF. Você pode usar “Baixar PDF”.');
+  }
+}
+
 $('pdfForm').addEventListener('submit',e=>{
   e.preventDefault();
   const start=$('pdfStartDate').value;
   const end=$('pdfEndDate').value;
   const vehicleId=$('pdfVehicle').value;
+
   if(!start || !end) return showToast('Informe o período do relatório.');
   if(start>end) return showToast('A data inicial não pode ser maior que a final.');
+
   const list=visibleRecords().slice()
     .filter(r=>r.date>=start && r.date<=end && (!vehicleId || r.vehicleId===vehicleId))
-    .sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt));
+    .sort((a,b)=>(a.date+(a.createdAt||'')).localeCompare(b.date+(b.createdAt||'')));
+
   if(!list.length) return showToast('Não há registros nesse período.');
+
   const vehicle=vehicleId ? getVehicle(vehicleId) : null;
+
   try{
     const bytes=buildFleetPdf(list,start,end,vehicle);
     const blob=new Blob([bytes],{type:'application/pdf'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download=`Oliveira_Frota_${fileDate(start)}_a_${fileDate(end)}${vehicle?`_${safeFilePart(vehicle.plate)}`:''}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    const fileName=`Oliveira_Frota_${fileDate(start)}_a_${fileDate(end)}${vehicle?`_${safeFilePart(vehicle.plate)}`:''}.pdf`;
+    const vehicleLabel=vehicle ? `${vehicle.name} - ${vehicle.plate}` : 'Todos os veículos';
+
+    clearCurrentPdfPreview();
+    currentPdfPreview={
+      blob,
+      url,
+      fileName,
+      shareText:`Oliveira Frota - ${fmtDate(start)} a ${fmtDate(end)} - ${vehicleLabel}`
+    };
+
+    $('pdfPreviewFrame').src=url;
+    $('pdfPreviewSubtitle').textContent=`${fmtDate(start)} a ${fmtDate(end)} • ${vehicleLabel} • ${list.length} registro(s)`;
     $('pdfDialog').close();
-    showToast('PDF gerado com sucesso.');
+    $('pdfPreviewDialog').showModal();
   }catch(err){
     console.error(err);
     showToast('Não foi possível gerar o PDF.');
   }
 });
+
+$('closePdfPreviewDialog')?.addEventListener('click',()=>{
+  $('pdfPreviewDialog').close();
+  setTimeout(clearCurrentPdfPreview,120);
+});
+$('pdfPreviewDialog')?.addEventListener('click',e=>{
+  if(e.target===$('pdfPreviewDialog')){
+    $('pdfPreviewDialog').close();
+    setTimeout(clearCurrentPdfPreview,120);
+  }
+});
+$('downloadPdfBtn')?.addEventListener('click',downloadCurrentPdf);
+$('sharePdfBtn')?.addEventListener('click',shareCurrentPdf);
+
 
 function fileDate(iso){
   const [y,m,d]=iso.split('-'); return `${d}-${m}-${y}`;

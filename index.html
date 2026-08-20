@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -295,7 +295,7 @@
       <section id="view-history" class="view" data-view="history">
         <div class="page-head split admin-subhead">
           <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
-          <button id="openPdfDialog" class="btn btn-primary" type="button">Salvar período em PDF</button>
+          <button id="openPdfDialog" class="btn btn-primary" type="button">Visualizar relatório PDF</button>
         </div>
         <div class="page-title-simple"><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
         <div class="card filters-card">
@@ -473,7 +473,7 @@
   <dialog id="pdfDialog" class="dialog">
     <form id="pdfForm" class="dialog-card" autocomplete="off">
       <div class="dialog-head">
-        <div><span class="eyebrow">RELATÓRIO</span><h3>Gerar PDF por período</h3></div>
+        <div><span class="eyebrow">RELATÓRIO</span><h3>PDF por período</h3></div>
         <button type="button" class="icon-btn" id="closePdfDialog" aria-label="Fechar">×</button>
       </div>
       <div class="form-grid two-cols">
@@ -481,9 +481,32 @@
         <label class="field"><span>Data final</span><input id="pdfEndDate" type="date" required /></label>
       </div>
       <label class="field"><span>Veículo</span><select id="pdfVehicle"><option value="">Todos os veículos</option></select></label>
-      <p class="dialog-note">O arquivo será gerado em A4 paisagem com os mesmos campos do controle de veículos.</p>
-      <button type="submit" class="btn btn-primary btn-block">Salvar PDF</button>
+      <p class="dialog-note">Primeiro o relatório será aberto para visualização. Depois você decide se quer compartilhar ou baixar.</p>
+      <button type="submit" class="btn btn-primary btn-block">Visualizar PDF</button>
     </form>
+  </dialog>
+
+  <dialog id="pdfPreviewDialog" class="dialog pdf-preview-dialog">
+    <div class="pdf-preview-card">
+      <div class="pdf-preview-head">
+        <div>
+          <span class="eyebrow">RELATÓRIO</span>
+          <h3>Visualização do PDF</h3>
+          <p id="pdfPreviewSubtitle">—</p>
+        </div>
+        <button type="button" class="icon-btn" id="closePdfPreviewDialog" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="pdf-preview-frame-wrap">
+        <iframe id="pdfPreviewFrame" title="Visualização do relatório PDF"></iframe>
+      </div>
+
+      <div class="pdf-preview-actions">
+        <button id="sharePdfBtn" class="btn btn-primary" type="button">Compartilhar PDF</button>
+        <button id="downloadPdfBtn" class="btn btn-secondary" type="button">Baixar PDF</button>
+      </div>
+      <p id="pdfShareHelp" class="dialog-note">No celular, o botão Compartilhar abre as opções disponíveis no aparelho quando o navegador permite compartilhar arquivos.</p>
+    </div>
   </dialog>
 
   <dialog id="dataDialog" class="dialog">
@@ -645,6 +668,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=23" defer></script>
+  <script src="app.js?v=24" defer></script>
 </body>
 </html>
