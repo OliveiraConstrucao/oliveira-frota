@@ -1,62 +1,44 @@
-OLIVEIRA FROTA — ATIVAÇÃO DA SINCRONIZAÇÃO FIREBASE
+OLIVEIRA FROTA — FIREBASE JÁ CONFIGURADO
 
-O app já está pronto para:
-- continuar funcionando offline;
-- salvar alterações no aparelho;
-- entrar com conta Firebase;
-- enviar alterações pendentes quando a internet voltar;
-- baixar registros criados em outros celulares;
-- sincronizar automaticamente a cada 60 segundos enquanto estiver online;
-- manter backup manual em JSON.
+Os dados do aplicativo Web já foram inseridos em firebase-config.js.
 
-PARA ATIVAR A NUVEM:
+FALTA SOMENTE ATIVAR OS SERVIÇOS NO FIREBASE:
 
-1. Crie um projeto no Firebase Console.
-   Nome sugerido: Oliveira Frota
+1. Clique em "Continuar no console".
 
-2. No projeto, adicione um APP WEB.
-   O Firebase exibirá uma configuração parecida com:
-   apiKey: "..."
-   projectId: "..."
+2. ATIVAR LOGIN:
+   Firebase Console > Segurança / Authentication > Começar
+   > Sign-in method > Email/Password
+   > Ativar > Salvar.
 
-3. Abra o arquivo:
-   firebase-config.js
+3. CRIAR USUÁRIO:
+   Authentication > Users / Usuários > Add user
+   Crie o e-mail e a senha que serão usados no Oliveira Frota.
+   Não coloque essa senha nos arquivos do GitHub.
 
-   Preencha somente:
-   apiKey
-   projectId
+4. CRIAR FIRESTORE:
+   Firebase Console > Firestore Database > Create database
+   Escolha Production mode.
+   Mantenha o banco (default).
+   Escolha uma região adequada.
 
-   Não altere:
-   fleetId: "oliveira-frota"
+5. PUBLICAR AS REGRAS:
+   Firestore Database > Rules
+   Apague o conteúdo atual.
+   Copie todo o conteúdo do arquivo firestore.rules deste pacote.
+   Clique em Publish / Publicar.
 
-4. No Firebase:
-   Authentication > Sign-in method > Email/Password
-   Ative Email/Password.
+6. PUBLICAR O SITE:
+   Envie todo o conteúdo deste pacote ao repositório GitHub
+   OliveiraConstrucao/oliveira-frota, substituindo os arquivos existentes.
 
-5. Em Authentication > Users:
-   crie pelo menos um usuário com e-mail e senha.
-   Essa conta será usada no botão Dados > Firebase do app.
-   Para a primeira versão, os celulares podem usar a mesma conta.
+7. TESTAR:
+   Abra o app > Dados > Firebase.
+   Entre com o usuário criado no Authentication.
+   Toque em "Sincronizar agora".
 
-6. Crie o Firestore Database em modo Production.
-
-7. Vá em Firestore Database > Rules.
-   Copie o conteúdo do arquivo firestore.rules deste pacote,
-   publique as regras.
-
-8. Envie TODOS os arquivos deste pacote para o GitHub,
-   substituindo os atuais.
-
-9. Abra o app:
-   Dados > Firebase
-   entre com o e-mail e senha criados no passo 5.
-
-10. Em cada outro celular:
-    abra/instale o app, vá em Dados e entre na mesma conta.
-    A frota e os registros serão sincronizados.
-
-IMPORTANTE
-- O app continua funcionando sem internet.
-- A sincronização só ocorre quando a conexão volta.
-- A senha NÃO é gravada pelo app; após o login é mantido um token de sessão.
-- Faça um backup JSON antes da primeira ativação da nuvem.
+IMPORTANTE:
+- O app continua funcionando offline.
+- Quando a internet volta, as alterações pendentes são sincronizadas.
+- A senha do usuário não é gravada no código do site.
+- Faça "Exportar backup" antes da primeira sincronização da base que já contém dados.

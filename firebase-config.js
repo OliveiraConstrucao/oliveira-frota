@@ -1,8 +1,10 @@
-// Oliveira Frota — configuração do Firebase
-// Preencha SOMENTE apiKey e projectId com os dados do seu app Web no Firebase.
-// Depois publique este arquivo junto com os demais arquivos do site.
+// Oliveira Frota — Firebase configurado
 window.OLIVEIRA_FIREBASE_CONFIG = Object.freeze({
-  apiKey: "",
-  projectId: "",
+  apiKey: "AIzaSyDs-EU88P_2uP4Ccl95GRRJjrP8kyM25X0",
+  authDomain: "oliveira-frota.firebaseapp.com",
+  projectId: "oliveira-frota",
+  storageBucket: "oliveira-frota.firebasestorage.app",
+  messagingSenderId: "999744012219",
+  appId: "1:999744012219:web:fca234f163d867fc1b4e9e",
   fleetId: "oliveira-frota"
 });
