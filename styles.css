@@ -758,3 +758,41 @@ body.splash-lock{
     max-height:62px;
   }
 }
+
+
+/* =========================================================
+   V19 — SEM CABEÇALHO SUPERIOR
+   ========================================================= */
+.app-shell{
+  padding-top:0;
+}
+.simple-main{
+  padding-top:18px;
+}
+@media(max-width:560px){
+  .simple-main{
+    padding-top:14px;
+  }
+}
+
+
+/* =========================================================
+   V20 — NOVO BANNER HORIZONTAL NA PÁGINA INICIAL
+   ========================================================= */
+.simple-home-banner{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:20px;
+  margin:0 0 18px;
+  border:1px solid #d8c09a;
+  box-shadow:0 10px 28px rgba(0,0,0,.10);
+  background:#fff;
+}
+
+@media(max-width:560px){
+  .simple-home-banner{
+    border-radius:16px;
+    margin:0 0 15px;
+  }
+}
