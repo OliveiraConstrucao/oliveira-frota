@@ -245,7 +245,13 @@ function showToast(msg){
   },3200);
 }
 
-function nav(view){
+const APP_VIEWS=['home','record','menu','admin','vehicles','vehicle-detail','corrections','history','oil','oil-record'];
+
+function activeView(){
+  return document.querySelector('.view.active')?.dataset.view || 'home';
+}
+function applyView(view){
+  if(!APP_VIEWS.includes(view)) view='home';
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===view));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.nav===view));
   if(view==='record') prepRecord();
@@ -257,11 +263,67 @@ function nav(view){
   if(view==='home') renderHome();
   if(view==='admin' || view==='menu') updateSyncUI();
   window.scrollTo({top:0,behavior:'smooth'});
-  history.replaceState(null,'',`#${view}`);
+}
+function nav(view,{replace=false}={}){
+  if(!APP_VIEWS.includes(view)) view='home';
+  const current=activeView();
+  applyView(view);
+
+  // Cada tela passa a ter uma entrada real no histórico do PWA.
+  // Assim o botão Voltar do Android retorna dentro do app.
+  if(replace){
+    history.replaceState({oliveiraView:view},'',`#${view}`);
+  }else if(current!==view || history.state?.oliveiraView!==view){
+    history.pushState({oliveiraView:view},'',`#${view}`);
+  }
+}
+function closeOpenDialogFromBack(){
+  const dialogs=[...document.querySelectorAll('dialog[open]')];
+  const dlg=dialogs[dialogs.length-1];
+  if(!dlg) return false;
+  try{ dlg.close(); }catch{}
+  if(dlg.id==='pdfPreviewDialog' && typeof clearCurrentPdfPreview==='function'){
+    setTimeout(clearCurrentPdfPreview,120);
+  }
+  return true;
 }
 
+window.addEventListener('popstate',e=>{
+  const current=activeView();
+
+  // 1) Se houver modal aberto, o botão Voltar fecha só o modal.
+  if(closeOpenDialogFromBack()){
+    history.pushState({oliveiraView:current,oliveiraGuard:true},'',`#${current}`);
+    return;
+  }
+
+  // 2) Nos formulários em etapas, Voltar retorna uma etapa antes.
+  if(current==='record' && Number(state.recordStep)>1){
+    setRecordStep(state.recordStep-1);
+    history.pushState({oliveiraView:'record',oliveiraGuard:true},'','#record');
+    return;
+  }
+  if(current==='oil-record' && Number(state.oilStep)>1){
+    setOilStep(state.oilStep-1);
+    history.pushState({oliveiraView:'oil-record',oliveiraGuard:true},'','#oil-record');
+    return;
+  }
+
+  const target=e.state?.oliveiraView || location.hash.replace('#','') || 'home';
+
+  // A entrada-base existe para proteger modais/telas internas.
+  // Chegando nela sem nada aberto, o segundo movimento realmente sai do app.
+  if(e.state?.oliveiraBase && target===current){
+    history.back();
+    return;
+  }
+
+  applyView(APP_VIEWS.includes(target)?target:'home');
+});
+
 document.addEventListener('click', e=>{
-  const btn=e.target.closest('[data-nav]'); if(btn) nav(btn.dataset.nav);
+  const btn=e.target.closest('[data-nav]');
+  if(btn) nav(btn.dataset.nav);
 });
 
 
@@ -301,8 +363,6 @@ function renderRecentMovements(){
 
 function renderHome(){
   renderRecentMovements();
-  const todayCount=visibleRecords().filter(r=>r.date===todayISO()).length;
-  if($('simpleTodayCount')) $('simpleTodayCount').textContent=`${todayCount} ${todayCount===1?'registro':'registros'}`;
   const attention=activeVehicles()
     .map(v=>({v,s:oilStatus(v)}))
     .filter(x=>['soon','overdue'].includes(x.s.type));
@@ -1482,7 +1542,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='26';
+const OLIVEIRA_APP_VERSION='27';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
@@ -1558,7 +1618,15 @@ renderVehicleOptions();
 offerInstallOnFirstVisit();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
-const initial=location.hash.replace('#',''); if(['home','record','menu','admin','vehicles','corrections','history','oil','oil-record'].includes(initial)) nav(initial); else nav('home');
+const initialHash=location.hash.replace('#','');
+const initialView=APP_VIEWS.includes(initialHash)?initialHash:'home';
+
+// Mantém uma entrada-base e uma entrada ativa do app.
+// A entrada-base permite que o botão Voltar feche um modal aberto na tela inicial
+// sem mandar o usuário imediatamente para fora do PWA.
+history.replaceState({oliveiraView:initialView,oliveiraBase:true},'',`#${initialView}`);
+applyView(initialView);
+history.pushState({oliveiraView:initialView,oliveiraGuard:true},'',`#${initialView}`);
 
 // ===== Relatório em PDF por período =====
 function monthStartISO(){
