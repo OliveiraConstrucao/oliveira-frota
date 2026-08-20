@@ -1160,6 +1160,24 @@ window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline 
 
 const INSTALL_OFFER_KEY='oliveira_frota_install_offer_seen_v1';
 
+function playOpeningSplash(){
+  const splash=$('openingSplash');
+  if(!splash) return;
+  document.body.classList.add('splash-lock');
+  splash.classList.remove('fade-out');
+  splash.removeAttribute('hidden');
+
+  setTimeout(()=>{
+    splash.classList.add('fade-out');
+    document.body.classList.remove('splash-lock');
+  },1450);
+
+  setTimeout(()=>{
+    splash.setAttribute('hidden','hidden');
+  },1950);
+}
+
+
 function isStandaloneApp(){
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
 }
@@ -1293,9 +1311,10 @@ function offerInstallOnFirstVisit(){
   },1800);
 }
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=16').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=17').catch(()=>{})); }
 
 load();
+playOpeningSplash();
 updateSyncUI();
 updateInstallUI();
 renderHome();

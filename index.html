@@ -32,9 +32,20 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=16" />
+  <link rel="stylesheet" href="styles.css?v=17" />
 </head>
 <body>
+  <div id="openingSplash" class="opening-splash" aria-hidden="true">
+    <div class="opening-splash-card">
+      <div class="opening-glow opening-glow-one"></div>
+      <div class="opening-glow opening-glow-two"></div>
+      <img src="assets/icons/icon-192.png" alt="Oliveira Frota" class="opening-logo" />
+      <span class="opening-brand">OLIVEIRA FROTA</span>
+      <strong>Controle simples da frota</strong>
+      <p>Abrindo aplicativo...</p>
+    </div>
+  </div>
+
   <div class="app-shell">
     <header class="topbar simple-topbar">
       <div class="brand">
@@ -621,6 +632,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=16" defer></script>
+  <script src="app.js?v=17" defer></script>
 </body>
 </html>

@@ -476,3 +476,178 @@ button{cursor:pointer}
   .simple-topbar .brand h1{font-size:18px}
   .simple-topbar .brand p{font-size:10px}
 }
+
+
+/* =========================================================
+   V17 — SPLASH DE ABERTURA + CABEÇALHO COLORIDO
+   ========================================================= */
+body.splash-lock{
+  overflow:hidden;
+}
+
+.opening-splash[hidden]{
+  display:none!important;
+}
+.opening-splash{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:
+    radial-gradient(circle at top,#f8d38e 0%, rgba(248,211,142,.32) 24%, transparent 46%),
+    linear-gradient(160deg,#702020 0%, #8f2e2f 44%, #b56a1a 100%);
+  opacity:1;
+  transition:opacity .42s ease, visibility .42s ease;
+}
+.opening-splash.fade-out{
+  opacity:0;
+  visibility:hidden;
+}
+.opening-splash-card{
+  position:relative;
+  width:min(360px,100%);
+  padding:28px 22px 24px;
+  border-radius:30px;
+  text-align:center;
+  color:#fff;
+  background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 22px 70px rgba(0,0,0,.22);
+  backdrop-filter:blur(8px);
+  overflow:hidden;
+}
+.opening-glow{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(8px);
+  opacity:.5;
+}
+.opening-glow-one{
+  width:130px;height:130px;
+  background:rgba(255,218,130,.46);
+  top:-22px; left:-18px;
+}
+.opening-glow-two{
+  width:120px;height:120px;
+  background:rgba(255,255,255,.18);
+  bottom:-18px; right:-14px;
+}
+.opening-logo{
+  position:relative;
+  width:122px;
+  height:122px;
+  border-radius:28px;
+  margin:0 auto 18px;
+  box-shadow:0 16px 38px rgba(0,0,0,.28);
+  animation:openingFloat 1.8s ease-in-out infinite;
+}
+.opening-brand{
+  position:relative;
+  display:block;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.18em;
+  color:#ffe8af;
+  margin-bottom:8px;
+}
+.opening-splash-card strong{
+  position:relative;
+  display:block;
+  font-size:26px;
+  line-height:1.1;
+}
+.opening-splash-card p{
+  position:relative;
+  margin:10px 0 0;
+  font-size:13px;
+  color:rgba(255,255,255,.88);
+}
+@keyframes openingFloat{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-8px) scale(1.03)}
+}
+
+.simple-topbar{
+  min-height:90px;
+  padding:14px clamp(16px,3vw,30px);
+  background:linear-gradient(135deg,#fff4df 0%, #f5e3bf 58%, #efd29e 100%);
+  border-bottom:1px solid #ead5af;
+}
+.simple-topbar .brand{
+  flex:1;
+  gap:18px;
+}
+.simple-topbar .brand-logo{
+  width:142px;
+  max-height:58px;
+}
+.simple-topbar .brand h1{
+  font-size:23px;
+  line-height:1.05;
+  color:#2b2b2b;
+}
+.simple-topbar .brand p{
+  font-size:13px;
+  margin-top:5px;
+  color:#6d5b44;
+}
+.simple-topbar .connection-badge{
+  background:rgba(255,255,255,.56);
+  border:1px solid rgba(166,176,143,.24);
+}
+
+@media(max-width:560px){
+  .opening-splash-card{
+    width:min(320px,100%);
+    padding:24px 18px 22px;
+    border-radius:24px;
+  }
+  .opening-logo{
+    width:108px;
+    height:108px;
+    border-radius:24px;
+  }
+  .opening-splash-card strong{
+    font-size:23px;
+  }
+
+  .simple-topbar{
+    width:100%;
+    min-height:94px;
+    padding:12px 14px;
+    border-radius:0;
+    background:linear-gradient(135deg,#fff2d8 0%, #f0d9a9 100%);
+  }
+  .simple-topbar .brand{
+    width:100%;
+    min-width:0;
+    gap:14px;
+  }
+  .simple-topbar .brand-logo{
+    width:122px;
+    max-height:54px;
+  }
+  .simple-topbar .brand h1{
+    font-size:20px;
+  }
+  .simple-topbar .brand p{
+    display:block;
+    font-size:11px;
+    margin-top:4px;
+  }
+}
+
+@media(max-width:390px){
+  .simple-topbar .brand-logo{
+    width:112px;
+  }
+  .simple-topbar .brand h1{
+    font-size:18px;
+  }
+  .simple-topbar .brand p{
+    font-size:10px;
+  }
+}
