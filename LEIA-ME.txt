@@ -1,0 +1,26 @@
+OLIVEIRA FROTA - MVP LOCAL
+
+Arquivos principais:
+- index.html
+- styles.css
+- app.js
+- manifest.webmanifest
+- service-worker.js
+- assets/
+
+Como testar no computador:
+1. Abra um terminal dentro desta pasta.
+2. Execute: python -m http.server 8080
+3. Abra no navegador: http://localhost:8080
+
+Observação:
+Os dados são armazenados no localStorage do navegador/dispositivo.
+Esta versão ainda não usa Firebase e não sincroniza entre aparelhos.
+
+Campos do registro mantidos exatamente conforme a ficha:
+- Veículo
+- Placa
+- Odômetro
+- Quant. por litro
+- Data
+- Troca de óleo

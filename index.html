@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#8f2e2f" />
+  <meta name="description" content="Controle simples de veículos, odômetro, quantidade por litro e troca de óleo da Oliveira Construção." />
+  <title>Oliveira Frota</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo-oliveira.png" alt="Oliveira Construção" class="brand-logo" />
+        <div>
+          <h1>Oliveira Frota</h1>
+          <p>Controle de veículos</p>
+        </div>
+      </div>
+      <button id="installBtn" class="btn btn-ghost hidden" type="button">Instalar app</button>
+    </header>
+
+    <main id="mainContent" class="main-content">
+      <section id="view-home" class="view active" data-view="home">
+        <div class="hero-card">
+          <div>
+            <span class="eyebrow">OLIVEIRA CONSTRUÇÃO</span>
+            <h2>Controle rápido da frota</h2>
+            <p>Registre as informações da ficha em poucos segundos.</p>
+          </div>
+          <button class="btn btn-primary btn-large" data-nav="record">+ Novo registro</button>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span>Veículos</span><strong id="statVehicles">0</strong></article>
+          <article class="stat-card"><span>Registros hoje</span><strong id="statToday">0</strong></article>
+          <article class="stat-card"><span>Trocas próximas</span><strong id="statOilSoon">0</strong></article>
+          <article class="stat-card"><span>Trocas vencidas</span><strong id="statOilOverdue">0</strong></article>
+        </div>
+
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">SITUAÇÃO</span>
+            <h3>Troca de óleo</h3>
+          </div>
+          <button class="link-btn" data-nav="oil">Ver todos</button>
+        </div>
+        <div id="homeOilList" class="stack-list"></div>
+      </section>
+
+      <section id="view-record" class="view" data-view="record">
+        <div class="page-head">
+          <div><span class="eyebrow">REGISTRO</span><h2>Novo registro</h2></div>
+        </div>
+        <form id="recordForm" class="card form-card" autocomplete="off">
+          <div class="form-grid two-cols">
+            <label class="field">
+              <span>Veículo</span>
+              <select id="recordVehicle" required></select>
+            </label>
+            <label class="field">
+              <span>Placa</span>
+              <input id="recordPlate" type="text" readonly placeholder="Preenchida automaticamente" />
+            </label>
+          </div>
+          <div class="form-grid two-cols">
+            <label class="field">
+              <span>Odômetro</span>
+              <input id="recordOdometer" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ex.: 84520" />
+            </label>
+            <label class="field">
+              <span>Quant. por litro</span>
+              <input id="recordQuantity" type="text" inputmode="decimal" required placeholder="Ex.: 9,8" />
+            </label>
+          </div>
+          <div class="form-grid two-cols">
+            <label class="field">
+              <span>Data</span>
+              <input id="recordDate" type="date" required />
+            </label>
+            <label class="field">
+              <span>Troca de óleo</span>
+              <input id="recordOil" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ex.: 85000" />
+            </label>
+          </div>
+          <div id="recordWarning" class="warning hidden"></div>
+          <button class="btn btn-primary btn-block" type="submit">Salvar registro</button>
+        </form>
+      </section>
+
+      <section id="view-vehicles" class="view" data-view="vehicles">
+        <div class="page-head split">
+          <div><span class="eyebrow">CADASTRO</span><h2>Veículos</h2></div>
+          <button id="newVehicleBtn" class="btn btn-primary">+ Veículo</button>
+        </div>
+        <div id="vehiclesList" class="cards-grid"></div>
+      </section>
+
+      <section id="view-history" class="view" data-view="history">
+        <div class="page-head">
+          <div><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
+        </div>
+        <div class="card filters-card">
+          <div class="form-grid three-cols">
+            <label class="field"><span>Veículo / placa</span><input id="historySearch" type="search" placeholder="Pesquisar" /></label>
+            <label class="field"><span>Data</span><input id="historyDate" type="date" /></label>
+            <label class="field"><span>&nbsp;</span><button id="clearFilters" type="button" class="btn btn-secondary">Limpar filtros</button></label>
+          </div>
+        </div>
+        <div id="historyList" class="stack-list history-list"></div>
+      </section>
+
+      <section id="view-oil" class="view" data-view="oil">
+        <div class="page-head">
+          <div><span class="eyebrow">MANUTENÇÃO</span><h2>Troca de óleo</h2></div>
+        </div>
+        <div id="oilList" class="stack-list"></div>
+      </section>
+
+      <section id="view-vehicle-detail" class="view" data-view="vehicle-detail">
+        <div class="page-head split">
+          <button class="btn btn-secondary" data-nav="vehicles">← Voltar</button>
+          <button id="detailNewRecord" class="btn btn-primary">+ Novo registro</button>
+        </div>
+        <div id="vehicleDetail"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="nav-item active" data-nav="home"><span>⌂</span><small>Início</small></button>
+      <button class="nav-item" data-nav="record"><span>＋</span><small>Registrar</small></button>
+      <button class="nav-item" data-nav="vehicles"><span>▣</span><small>Veículos</small></button>
+      <button class="nav-item" data-nav="history"><span>≡</span><small>Histórico</small></button>
+    </nav>
+  </div>
+
+  <dialog id="vehicleDialog" class="dialog">
+    <form id="vehicleForm" method="dialog" class="dialog-card">
+      <div class="dialog-head"><h3>Novo veículo</h3><button type="button" class="icon-btn" id="closeVehicleDialog">×</button></div>
+      <label class="field"><span>Veículo</span><input id="vehicleName" type="text" required placeholder="Ex.: Hilux" /></label>
+      <label class="field"><span>Placa</span><input id="vehiclePlate" type="text" required maxlength="8" placeholder="ABC1D23" /></label>
+      <button type="submit" class="btn btn-primary btn-block">Salvar veículo</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
