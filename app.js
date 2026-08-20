@@ -472,7 +472,281 @@ function showToast(msg){
   },3200);
 }
 
-const APP_VIEWS=['home','record','menu','manual','system','admin','vehicles','vehicle-detail','corrections','audit','history','oil','oil-record'];
+
+function normalizeDoubtText(text=''){
+  return String(text)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function hasAny(text,terms){
+  return terms.some(t=>text.includes(t));
+}
+function doubtReply(question){
+  const q=normalizeDoubtText(question);
+  const owner=deviceOwnerName() || 'não identificado';
+  const currentVersion=`V${OLIVEIRA_APP_VERSION}`;
+  const pending=state.syncQueue.length;
+  const online=navigator.onLine;
+  const cloud=cloudConfigured() && cloudAuthenticated();
+  const syncText=!online
+    ? `Este aparelho está sem internet. Há ${pending} alteração(ões) aguardando envio.`
+    : cloud
+      ? (pending ? `A nuvem está conectada, mas ainda há ${pending} alteração(ões) pendente(s). O app tentará enviar automaticamente.` : 'A nuvem está conectada e não há alterações pendentes.')
+      : 'A internet está disponível, mas a conexão automática com a nuvem ainda está sendo estabelecida.';
+
+  if(!q) return {text:'Digite uma dúvida para eu ajudar.'};
+
+  if(hasAny(q,['sincroniz','nuvem','firebase','outro aparelho','outro celular','computador','pc','pendente'])){
+    return {
+      text:`${syncText} A sincronização é automática: o funcionário não precisa fazer login nem tocar em nenhum botão.`,
+      action:{label:'Ver estado do sistema',view:'system'}
+    };
+  }
+
+  if(hasAny(q,['sem internet','offline','internet caiu','sem sinal','nao tem internet','não tem internet'])){
+    return {
+      text:'Pode usar o app normalmente. O lançamento fica salvo neste aparelho. Quando a internet voltar, o Oliveira Frota sincroniza automaticamente. Não faça o mesmo lançamento novamente.',
+      action:{label:'Ver estado do sistema',view:'system'}
+    };
+  }
+
+  if(hasAny(q,['abastec','combustivel','combustível','litro','tanque'])){
+    if(hasAny(q,['consumo','km por litro','km litro','media','média','calcula'])){
+      return {text:'O consumo é calculado automaticamente depois que existe um abastecimento anterior do mesmo veículo. O app usa a diferença de odômetro entre os abastecimentos e os litros informados no lançamento atual.'};
+    }
+    return {
+      text:'Para registrar um abastecimento: 1) escolha o veículo; 2) informe o KM do painel; 3) informe os litros; 4) confira e salve. O consumo é calculado automaticamente.',
+      action:{label:'Abrir abastecimento',view:'record'}
+    };
+  }
+
+  if(hasAny(q,['oleo','óleo','troca de oleo','troca óleo','lubrificante'])){
+    return {
+      text:'Registre a troca somente depois que ela realmente for feita. Escolha o veículo, informe o KM atual e o KM previsto para a próxima troca. O app pedirá confirmação antes de continuar.',
+      action:{label:'Abrir troca de óleo',oil:true}
+    };
+  }
+
+  if(hasAny(q,['errei','erro','errado','corrigir','corrij','editar lancamento','editar lançamento','km errado','litros errado','data errada'])){
+    return {
+      text:'Para corrigir um lançamento, entre em Menu → Administração → Corrigir lançamentos. A área pede o PIN da responsável. Depois da correção, o km/l é recalculado automaticamente.',
+      action:{label:'Ir para correções',protectedView:'corrections'}
+    };
+  }
+
+  if(hasAny(q,['excluir lancamento','excluir lançamento','apagar lancamento','apagar lançamento','cancelar lancamento','cancelar lançamento'])){
+    return {
+      text:'Entre em Administração → Corrigir lançamentos. Você pode cancelar, reativar ou excluir um registro. Cancelar é mais seguro quando você quer manter rastreabilidade.',
+      action:{label:'Ir para correções',protectedView:'corrections'}
+    };
+  }
+
+  if(hasAny(q,['cadastrar veiculo','cadastrar veículo','novo veiculo','novo veículo','editar veiculo','editar veículo','placa','arquivar veiculo','excluir veiculo','odometro do veiculo','odômetro do veículo'])){
+    return {
+      text:'Os veículos são administrados em Menu → Administração → Veículos. Lá é possível cadastrar, editar nome/placa/odômetro, arquivar, reativar ou excluir.',
+      action:{label:'Abrir veículos',protectedView:'vehicles'}
+    };
+  }
+
+  if(hasAny(q,['pdf','relatorio','relatório','historico','histórico','compartilhar','baixar'])){
+    return {
+      text:'Abra Menu → Histórico e PDF. Escolha o período e, se quiser, um veículo. Toque em Visualizar PDF. A prévia aparece na tela e depois você decide se quer compartilhar ou baixar.',
+      action:{label:'Abrir Histórico e PDF',view:'history'}
+    };
+  }
+
+  if(hasAny(q,['instalar','instalacao','instalação','icone na tela','ícone na tela','tela inicial','android','iphone'])){
+    return {
+      text:'Use Menu → Instalar app. No Android, o navegador oferece a instalação. No iPhone, use Compartilhar → Adicionar à Tela de Início. Depois de instalado, não é necessário desinstalar para atualizar.',
+      action:{label:'Abrir opção de instalação',install:true}
+    };
+  }
+
+  if(hasAny(q,['atualizar','atualizacao','atualização','versao','versão'])){
+    return {
+      text:`Este aparelho está usando ${currentVersion}. O app verifica novas versões automaticamente quando é aberto com internet. Também é possível conferir em Menu → Sistema.`,
+      action:{label:'Ver Sistema',view:'system'}
+    };
+  }
+
+  if(hasAny(q,['quem usa','responsavel','responsável','meu nome','trocar nome','este aparelho','identificacao','identificação'])){
+    return {
+      text:`Este aparelho está identificado para: ${owner}. Para trocar, use Menu → Este aparelho. A alteração vale apenas para os próximos lançamentos; os antigos mantêm o responsável original.`,
+      action:{label:'Alterar responsável',deviceOwner:true}
+    };
+  }
+
+  if(hasAny(q,['pin','senha','administracao','administração','administrador'])){
+    return {
+      text:'A Administração é protegida por PIN da responsável. O funcionário não precisa desse PIN para abastecer, registrar troca de óleo, consultar histórico, usar o manual ou tirar dúvidas.',
+      action:{label:'Abrir Administração',protectedView:'admin'}
+    };
+  }
+
+  if(hasAny(q,['demonstracao','demonstração','ficticio','fictício','teste','dados demo'])){
+    return {
+      text:'Os dados fictícios podem ser removidos com segurança em Administração → Dados e nuvem → Remover dados de demonstração. A função preserva veículos que já foram convertidos em oficiais.',
+      action:{label:'Abrir Administração',protectedView:'admin'}
+    };
+  }
+
+  if(hasAny(q,['backup','restaurar','restauracao','restauração'])){
+    return {
+      text:'Backup e restauração ficam em Administração → Dados e nuvem. Essa área é protegida porque a restauração pode alterar vários registros.',
+      action:{label:'Abrir Administração',protectedView:'admin'}
+    };
+  }
+
+  if(hasAny(q,['voltar','botao voltar','botão voltar','sair do app'])){
+    return {text:'O botão Voltar do celular deve retornar uma etapa dentro do Oliveira Frota. Se houver uma janela aberta, ele fecha a janela primeiro; nos formulários, volta uma etapa; e nas telas internas, retorna à tela anterior.'};
+  }
+
+  if(hasAny(q,['ultimas movimentacoes','últimas movimentações','movimentacoes','movimentações','ultimos lancamentos','últimos lançamentos'])){
+    return {text:'As 10 movimentações mais recentes aparecem na página inicial e são atualizadas assim que um novo abastecimento é salvo ou sincronizado.'};
+  }
+
+  if(hasAny(q,['troca proxima','troca próxima','oleo vencido','óleo vencido','faltam','proxima troca','próxima troca'])){
+    return {
+      text:'Abra Menu → Troca de óleo para ver a situação de cada veículo. O app mostra o KM atual, a próxima troca cadastrada e quanto falta quando existe uma referência de troca.',
+      action:{label:'Ver trocas de óleo',view:'oil'}
+    };
+  }
+
+  if(hasAny(q,['manual','ajuda','como usar'])){
+    return {
+      text:'O Manual rápido reúne os passos principais do app. Você também pode continuar perguntando aqui com suas próprias palavras.',
+      action:{label:'Abrir Manual rápido',view:'manual'}
+    };
+  }
+
+  if(hasAny(q,['status','sistema','esta funcionando','está funcionando'])){
+    return {
+      text:`Situação agora: internet ${online?'online':'offline'}; nuvem ${cloud?'conectada':'conectando'}; pendentes ${pending}; versão ${currentVersion}; usuário deste aparelho: ${owner}.`,
+      action:{label:'Ver detalhes',view:'system'}
+    };
+  }
+
+  return {
+    text:'Não encontrei essa orientação no manual do Oliveira Frota. Tente escrever de outra forma ou procure a responsável pela frota. Posso ajudar com abastecimento, troca de óleo, veículos, correções, PDF, internet, sincronização, instalação e atualização.'
+  };
+}
+function appendDoubtMessage(role,text,action=null){
+  const chat=$('doubtsChat');
+  if(!chat) return;
+  const wrapper=document.createElement('div');
+  wrapper.className=`doubt-message ${role}`;
+
+  if(role==='assistant'){
+    const avatar=document.createElement('div');
+    avatar.className='doubt-avatar';
+    avatar.textContent='OF';
+    wrapper.appendChild(avatar);
+  }
+
+  const bubble=document.createElement('div');
+  bubble.className='doubt-bubble';
+  if(role==='assistant'){
+    const title=document.createElement('strong');
+    title.textContent='Oliveira Frota';
+    bubble.appendChild(title);
+  }
+  const p=document.createElement('p');
+  p.textContent=text;
+  bubble.appendChild(p);
+
+  if(action){
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='doubt-action-btn';
+    btn.textContent=action.label;
+    if(action.view) btn.dataset.doubtNav=action.view;
+    if(action.protectedView) btn.dataset.doubtProtected=action.protectedView;
+    if(action.oil) btn.dataset.doubtOil='1';
+    if(action.install) btn.dataset.doubtInstall='1';
+    if(action.deviceOwner) btn.dataset.doubtOwner='1';
+    bubble.appendChild(btn);
+  }
+
+  wrapper.appendChild(bubble);
+  chat.appendChild(wrapper);
+  requestAnimationFrame(()=>{ chat.scrollTop=chat.scrollHeight; });
+}
+function answerDoubt(question){
+  const text=String(question||'').trim();
+  if(!text) return;
+  appendDoubtMessage('user',text);
+  const reply=doubtReply(text);
+  setTimeout(()=>appendDoubtMessage('assistant',reply.text,reply.action||null),120);
+}
+function resetDoubtsChat(){
+  const chat=$('doubtsChat');
+  if(!chat) return;
+  chat.innerHTML=`
+    <div class="doubt-message assistant">
+      <div class="doubt-avatar">OF</div>
+      <div class="doubt-bubble">
+        <strong>Oliveira Frota</strong>
+        <p>Pode perguntar com suas palavras. Por exemplo: “errei o KM”, “como vejo o PDF?” ou “estou sem internet”.</p>
+      </div>
+    </div>`;
+}
+$('doubtsForm')?.addEventListener('submit',e=>{
+  e.preventDefault();
+  const input=$('doubtsInput');
+  const question=input.value.trim();
+  if(!question) return;
+  input.value='';
+  answerDoubt(question);
+  input.focus();
+});
+document.addEventListener('click',e=>{
+  const chip=e.target.closest('[data-doubt]');
+  if(chip){
+    const q=chip.dataset.doubt||'';
+    $('doubtsInput').value='';
+    answerDoubt(q);
+    return;
+  }
+
+  const action=e.target.closest('.doubt-action-btn');
+  if(!action) return;
+  if(action.dataset.doubtNav){
+    nav(action.dataset.doubtNav);
+    return;
+  }
+  if(action.dataset.doubtProtected){
+    requestAdminAccess(action.dataset.doubtProtected);
+    return;
+  }
+  if(action.dataset.doubtOil){
+    openOilChangeConfirmation();
+    return;
+  }
+  if(action.dataset.doubtInstall){
+    openInstallDialog();
+    return;
+  }
+  if(action.dataset.doubtOwner){
+    openDeviceOwnerDialog({required:false});
+  }
+});
+$('clearDoubtsBtn')?.addEventListener('click',()=>{
+  resetDoubtsChat();
+  $('doubtsInput').value='';
+  $('doubtsInput').focus();
+});
+$('doubtsInput')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    $('doubtsForm')?.requestSubmit();
+  }
+});
+
+const APP_VIEWS=['home','record','menu','doubts','manual','system','admin','vehicles','vehicle-detail','corrections','audit','history','oil','oil-record'];
 const PROTECTED_VIEWS=['admin','vehicles','vehicle-detail','corrections','audit'];
 
 function activeView(){
@@ -489,6 +763,7 @@ function applyView(view){
   if(view==='corrections') renderCorrections();
   if(view==='audit') renderAudit();
   if(view==='system') renderSystemInfo();
+  if(view==='doubts') setTimeout(()=>$('doubtsInput')?.focus(),180);
   if(view==='oil') renderOil();
   if(view==='home') renderHome();
   if(view==='admin' || view==='menu') updateSyncUI();
@@ -2041,7 +2316,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='33';
+const OLIVEIRA_APP_VERSION='34';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;

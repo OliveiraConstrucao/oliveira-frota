@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <link rel="stylesheet" href="styles.css?v=34" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -218,6 +218,11 @@
             <strong>Administração</strong>
             <small>Área protegida da responsável</small>
           </button>
+          <button class="admin-menu-card menu-feature-card doubts-menu-card" data-nav="doubts" type="button">
+            <span class="admin-menu-icon">❓</span>
+            <strong>Dúvidas</strong>
+            <small>Escreva uma pergunta e receba orientação</small>
+          </button>
           <button class="admin-menu-card menu-feature-card manual-menu-card" data-nav="manual" type="button">
             <span class="admin-menu-icon">📖</span>
             <strong>Manual rápido</strong>
@@ -238,6 +243,57 @@
             <strong>Instalar app</strong>
             <small id="menuInstallHelp">Colocar o Oliveira Frota na tela inicial</small>
           </button>
+        </div>
+      </section>
+
+      <section id="view-doubts" class="view" data-view="doubts">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
+        </div>
+
+        <div class="doubts-hero">
+          <div class="doubts-hero-icon">❓</div>
+          <div>
+            <span class="eyebrow">DÚVIDAS</span>
+            <h2>Como posso ajudar?</h2>
+            <p>Escreva sua dúvida sobre o Oliveira Frota. As orientações funcionam mesmo sem internet.</p>
+          </div>
+        </div>
+
+        <div class="doubts-quick-wrap">
+          <span class="doubts-quick-label">Perguntas rápidas</span>
+          <div class="doubts-quick-list">
+            <button type="button" class="doubt-chip" data-doubt="Como registrar um abastecimento?">⛽ Como abastecer?</button>
+            <button type="button" class="doubt-chip" data-doubt="Como registrar uma troca de óleo?">🛢️ Troca de óleo</button>
+            <button type="button" class="doubt-chip" data-doubt="Errei um lançamento. Como corrigir?">✏️ Errei um lançamento</button>
+            <button type="button" class="doubt-chip" data-doubt="Como funciona sem internet?">📡 Sem internet</button>
+            <button type="button" class="doubt-chip" data-doubt="Meus dados estão sincronizados?">☁️ Sincronização</button>
+            <button type="button" class="doubt-chip" data-doubt="Como visualizar ou compartilhar o PDF?">📄 Relatório PDF</button>
+          </div>
+        </div>
+
+        <div id="doubtsChat" class="doubts-chat" aria-live="polite">
+          <div class="doubt-message assistant">
+            <div class="doubt-avatar">OF</div>
+            <div class="doubt-bubble">
+              <strong>Oliveira Frota</strong>
+              <p>Pode perguntar com suas palavras. Por exemplo: “errei o KM”, “como vejo o PDF?” ou “estou sem internet”.</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="doubtsForm" class="doubts-form" autocomplete="off">
+          <label class="doubts-input-wrap">
+            <span class="sr-only">Digite sua dúvida</span>
+            <textarea id="doubtsInput" rows="2" maxlength="300" placeholder="Digite sua dúvida aqui..." required></textarea>
+          </label>
+          <button id="doubtsSendBtn" type="submit" class="btn btn-primary doubts-send-btn">Perguntar</button>
+        </form>
+
+        <button id="clearDoubtsBtn" type="button" class="btn btn-secondary doubts-clear-btn">Limpar conversa</button>
+
+        <div class="doubts-footnote">
+          Este assistente explica somente o funcionamento do Oliveira Frota. Se não encontrar a orientação, procure a responsável pela frota.
         </div>
       </section>
 
@@ -404,7 +460,7 @@
         </div>
 
         <div class="manual-footer-note">
-          <strong>Dica:</strong> no uso diário, o funcionário normalmente precisará apenas de <b>Abastecer</b> e <b>Troca de óleo</b>.
+          <strong>Dica:</strong> se não souber como fazer alguma coisa, use <b>Menu → Dúvidas</b> e escreva a pergunta com suas próprias palavras.
         </div>
       </section>
 
@@ -968,6 +1024,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=32" defer></script>
-  <script src="app.js?v=33" defer></script>
+  <script src="app.js?v=34" defer></script>
 </body>
 </html>

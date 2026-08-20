@@ -2056,3 +2056,257 @@ body.splash-lock{
     grid-template-columns:1fr;
   }
 }
+
+
+/* =========================================================
+   V34 — ASSISTENTE DE DÚVIDAS OFFLINE
+   ========================================================= */
+.sr-only{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+.doubts-menu-card{
+  border:2px solid #d5c7e8;
+  background:#fbf8ff;
+}
+.doubts-menu-card .admin-menu-icon{font-size:34px}
+
+.doubts-hero{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:18px;
+  border:1px solid #ddd4e8;
+  border-radius:20px;
+  background:linear-gradient(135deg,#fff 0%,#faf5ff 100%);
+}
+.doubts-hero-icon{
+  flex:0 0 auto;
+  width:58px;
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:17px;
+  background:#efe5f7;
+  font-size:30px;
+}
+.doubts-hero h2{
+  margin:3px 0 5px;
+  font-size:28px;
+}
+.doubts-hero p{
+  margin:0;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.45;
+}
+
+.doubts-quick-wrap{
+  margin:14px 0 10px;
+}
+.doubts-quick-label{
+  display:block;
+  margin-bottom:7px;
+  color:#6a6a66;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.doubts-quick-list{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding:1px 1px 7px;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.doubts-quick-list::-webkit-scrollbar{display:none}
+.doubt-chip{
+  flex:0 0 auto;
+  min-height:38px;
+  padding:8px 11px;
+  border:1px solid #deded9;
+  border-radius:999px;
+  background:#fff;
+  color:#3f3f3d;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+}
+
+.doubts-chat{
+  min-height:310px;
+  max-height:50vh;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:15px 12px;
+  border:1px solid #dededb;
+  border-radius:18px;
+  background:#f4f4f1;
+  scroll-behavior:smooth;
+}
+.doubt-message{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  max-width:92%;
+}
+.doubt-message.user{
+  align-self:flex-end;
+  justify-content:flex-end;
+}
+.doubt-message.assistant{
+  align-self:flex-start;
+}
+.doubt-avatar{
+  flex:0 0 auto;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--wine);
+  color:#fff;
+  font-size:10px;
+  font-weight:900;
+}
+.doubt-bubble{
+  min-width:0;
+  padding:11px 12px;
+  border-radius:15px 15px 15px 5px;
+  background:#fff;
+  border:1px solid #e1e1dd;
+  box-shadow:0 3px 10px rgba(0,0,0,.04);
+}
+.doubt-message.user .doubt-bubble{
+  border-color:var(--wine);
+  border-radius:15px 15px 5px 15px;
+  background:var(--wine);
+  color:#fff;
+}
+.doubt-bubble>strong{
+  display:block;
+  margin-bottom:3px;
+  font-size:11px;
+  color:var(--wine);
+}
+.doubt-bubble p{
+  margin:0;
+  font-size:14px;
+  line-height:1.5;
+  white-space:pre-line;
+  overflow-wrap:anywhere;
+}
+.doubt-action-btn{
+  width:100%;
+  min-height:38px;
+  margin-top:10px;
+  padding:8px 10px;
+  border:1px solid #d4b7b7;
+  border-radius:10px;
+  background:#fff7f7;
+  color:var(--wine);
+  font:inherit;
+  font-size:12px;
+  font-weight:900;
+}
+
+.doubts-form{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  margin-top:10px;
+  align-items:stretch;
+}
+.doubts-input-wrap{
+  display:block;
+  min-width:0;
+}
+.doubts-input-wrap textarea{
+  display:block;
+  width:100%;
+  min-height:54px;
+  max-height:130px;
+  resize:vertical;
+  padding:12px 13px;
+  border:1px solid #d8d8d4;
+  border-radius:14px;
+  background:#fff;
+  color:#242424;
+  font:inherit;
+  font-size:15px;
+  line-height:1.4;
+  outline:none;
+}
+.doubts-input-wrap textarea:focus{
+  border-color:#b86b6b;
+  box-shadow:0 0 0 3px rgba(143,46,47,.08);
+}
+.doubts-send-btn{
+  min-width:94px;
+  border-radius:14px;
+}
+.doubts-clear-btn{
+  display:block;
+  width:auto;
+  margin:9px auto 0;
+  padding:9px 13px;
+  font-size:11px;
+}
+.doubts-footnote{
+  margin:12px 4px 0;
+  color:var(--muted);
+  text-align:center;
+  font-size:11px;
+  line-height:1.45;
+}
+
+@media(max-width:560px){
+  .doubts-hero{
+    align-items:flex-start;
+    padding:15px 13px;
+    border-radius:17px;
+  }
+  .doubts-hero-icon{
+    width:50px;
+    height:50px;
+    border-radius:14px;
+    font-size:26px;
+  }
+  .doubts-hero h2{
+    font-size:24px;
+    line-height:1.15;
+  }
+  .doubts-hero p{
+    font-size:13px;
+  }
+  .doubts-chat{
+    min-height:330px;
+    max-height:48vh;
+    padding:12px 9px;
+  }
+  .doubt-message{
+    max-width:96%;
+  }
+  .doubt-bubble p{
+    font-size:15px;
+  }
+  .doubts-form{
+    grid-template-columns:1fr;
+  }
+  .doubts-send-btn{
+    min-height:48px;
+  }
+}
