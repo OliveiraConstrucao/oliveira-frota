@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=26" />
+  <link rel="stylesheet" href="styles.css?v=28" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -217,11 +217,167 @@
             <strong>Administração</strong>
             <small>Veículos, backup e nuvem</small>
           </button>
+          <button class="admin-menu-card menu-feature-card manual-menu-card" data-nav="manual" type="button">
+            <span class="admin-menu-icon">📖</span>
+            <strong>Manual rápido</strong>
+            <small>Como usar o app passo a passo</small>
+          </button>
           <button id="menuInstallBtn" class="admin-menu-card menu-feature-card install-menu-card" type="button">
             <span class="admin-menu-icon">📲</span>
             <strong>Instalar app</strong>
             <small id="menuInstallHelp">Colocar o Oliveira Frota na tela inicial</small>
           </button>
+        </div>
+      </section>
+
+      <section id="view-manual" class="view" data-view="manual">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="menu" type="button">← Menu</button>
+        </div>
+
+        <div class="manual-hero">
+          <span class="eyebrow">MANUAL RÁPIDO</span>
+          <h2>Como usar o Oliveira Frota</h2>
+          <p>Toque no assunto que você precisa. As instruções são curtas e diretas.</p>
+        </div>
+
+        <div class="manual-shortcuts">
+          <button class="manual-shortcut fuel" data-nav="record" type="button">
+            <span>⛽</span>
+            <strong>Abastecer agora</strong>
+          </button>
+          <button id="manualOilShortcut" class="manual-shortcut oil" type="button">
+            <span>🛢️</span>
+            <strong>Troca de óleo</strong>
+          </button>
+        </div>
+
+        <div class="manual-sections">
+          <details class="manual-topic" open>
+            <summary>
+              <span class="manual-topic-icon">⛽</span>
+              <span><strong>Registrar abastecimento</strong><small>O que fazer no dia a dia</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ol class="manual-steps">
+                <li><b>Escolha o veículo</b><span>Toque no caminhão ou veículo que foi abastecido.</span></li>
+                <li><b>Digite o KM do painel</b><span>Informe a quilometragem que aparece no veículo.</span></li>
+                <li><b>Digite os litros</b><span>Informe quantos litros foram abastecidos.</span></li>
+                <li><b>Confira e salve</b><span>O app calcula o consumo automaticamente.</span></li>
+              </ol>
+              <div class="manual-tip">✓ Se alguma informação estiver errada, não adivinhe. Confira antes de salvar.</div>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">🛢️</span>
+              <span><strong>Registrar troca de óleo</strong><small>Somente quando a troca realmente acontecer</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ol class="manual-steps">
+                <li><b>Toque em Troca de óleo</b><span>O app pedirá confirmação antes de continuar.</span></li>
+                <li><b>Escolha o veículo</b><span>Selecione o veículo que recebeu a troca.</span></li>
+                <li><b>Informe o KM da troca</b><span>Digite a quilometragem atual do veículo.</span></li>
+                <li><b>Informe a próxima troca</b><span>Digite em qual KM deverá ser feita a próxima troca.</span></li>
+                <li><b>Confira e salve</b><span>O app passa a acompanhar automaticamente o prazo.</span></li>
+              </ol>
+              <div class="manual-warning">⚠ Não registre troca de óleo apenas porque apareceu um aviso. Registre somente depois que a troca tiver sido realizada.</div>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">📋</span>
+              <span><strong>Consultar histórico e PDF</strong><small>Ver, compartilhar ou baixar relatório</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ol class="manual-steps">
+                <li><b>Abra Menu → Histórico e PDF</b></li>
+                <li><b>Escolha o período</b><span>Você também pode selecionar apenas um veículo.</span></li>
+                <li><b>Visualize o relatório</b><span>Confira os dados antes de compartilhar.</span></li>
+                <li><b>Compartilhe ou baixe</b><span>Use a opção que precisar no aparelho.</span></li>
+              </ol>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">✏️</span>
+              <span><strong>Corrigir um lançamento</strong><small>Para a responsável</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <p class="manual-text">Entre em <b>Menu → Administração → Corrigir lançamentos</b>.</p>
+              <ul class="manual-list">
+                <li>Editar veículo, data, KM ou litros.</li>
+                <li>Cancelar um lançamento que não deve contar.</li>
+                <li>Excluir um lançamento quando necessário.</li>
+                <li>O consumo é recalculado automaticamente depois da correção.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">🚚</span>
+              <span><strong>Veículos</strong><small>Cadastrar, editar, arquivar ou excluir</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <p class="manual-text">Entre em <b>Menu → Administração → Veículos</b>.</p>
+              <ul class="manual-list">
+                <li><b>Cadastrar:</b> adicione nome e placa.</li>
+                <li><b>Editar:</b> corrija nome, placa ou ajuste o odômetro atual.</li>
+                <li><b>Arquivar:</b> o veículo para de aparecer nos novos lançamentos, mas mantém o histórico.</li>
+                <li><b>Excluir:</b> retire o veículo da frota quando necessário.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">📡</span>
+              <span><strong>Sem internet</strong><small>O app continua funcionando</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <p class="manual-text">Pode fazer o lançamento normalmente. O registro fica guardado no aparelho e será enviado para a nuvem quando a internet voltar.</p>
+              <div class="manual-tip">✓ Não é necessário lançar novamente quando a internet voltar.</div>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">📲</span>
+              <span><strong>Instalar e atualizar o app</strong><small>Não precisa desinstalar para atualizar</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ul class="manual-list">
+                <li>Para instalar, use <b>Menu → Instalar app</b>.</li>
+                <li>No Android, siga a opção de instalação mostrada pelo navegador.</li>
+                <li>No iPhone, use <b>Compartilhar → Adicionar à Tela de Início</b>.</li>
+                <li>As novas versões são verificadas automaticamente quando o app é aberto com internet.</li>
+                <li><b>Não desinstale o app para atualizar.</b></li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">⚠️</span>
+              <span><strong>Se algo der errado</strong><small>Passos simples antes de pedir ajuda</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ol class="manual-steps">
+                <li><b>Confira os dados digitados.</b></li>
+                <li><b>Feche e abra o app novamente.</b></li>
+                <li><b>Confira se há internet</b><span>principalmente se os dados não aparecerem em outro aparelho.</span></li>
+                <li><b>Não apague o app nem limpe os dados do navegador.</b></li>
+              </ol>
+            </div>
+          </details>
+        </div>
+
+        <div class="manual-footer-note">
+          <strong>Dica:</strong> no uso diário, o funcionário normalmente precisará apenas de <b>Abastecer</b> e <b>Troca de óleo</b>.
         </div>
       </section>
 
@@ -684,6 +840,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=27" defer></script>
+  <script src="app.js?v=28" defer></script>
 </body>
 </html>

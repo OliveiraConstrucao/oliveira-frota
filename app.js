@@ -245,7 +245,7 @@ function showToast(msg){
   },3200);
 }
 
-const APP_VIEWS=['home','record','menu','admin','vehicles','vehicle-detail','corrections','history','oil','oil-record'];
+const APP_VIEWS=['home','record','menu','manual','admin','vehicles','vehicle-detail','corrections','history','oil','oil-record'];
 
 function activeView(){
   return document.querySelector('.view.active')?.dataset.view || 'home';
@@ -954,6 +954,7 @@ function closeOilChangeConfirmation(){
   if(dlg?.open) dlg.close();
 }
 $('homeOilChangeBtn')?.addEventListener('click',openOilChangeConfirmation);
+$('manualOilShortcut')?.addEventListener('click',openOilChangeConfirmation);
 $('oilScreenRegisterBtn')?.addEventListener('click',openOilChangeConfirmation);
 $('cancelOilConfirmBtn')?.addEventListener('click',closeOilChangeConfirmation);
 $('confirmOilChangeBtn')?.addEventListener('click',()=>{
@@ -1542,7 +1543,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='27';
+const OLIVEIRA_APP_VERSION='28';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
