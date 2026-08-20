@@ -1038,3 +1038,115 @@ body.splash-lock{
     min-height:50px;
   }
 }
+
+
+/* =========================================================
+   V26 — AÇÕES COMPACTAS + CONFIRMAÇÃO DA TROCA DE ÓLEO
+   ========================================================= */
+.home-quick-actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:16px;
+}
+.compact-action-btn{
+  min-height:64px;
+  padding:13px 18px;
+  border-radius:18px;
+  grid-template-columns:42px 1fr auto;
+  gap:12px;
+  box-shadow:0 8px 20px rgba(143,46,47,.18);
+}
+.compact-action-btn .big-action-icon{
+  font-size:29px;
+}
+.compact-action-btn .big-action-copy strong{
+  font-size:clamp(16px,3.8vw,21px);
+}
+.compact-action-btn .big-action-arrow{
+  font-size:30px;
+}
+.oil-home-action{
+  background:#a56f16;
+  box-shadow:0 8px 20px rgba(165,111,22,.18);
+}
+.oil-home-action:hover{
+  background:#8f5f11;
+}
+.simple-home-card>p{
+  display:none;
+}
+
+.confirm-action-card{
+  width:min(410px,calc(100vw - 28px));
+  text-align:center;
+  padding:24px 20px 20px;
+}
+.confirm-action-icon{
+  width:68px;
+  height:68px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 12px;
+  border-radius:50%;
+  background:#fff4d9;
+  font-size:34px;
+}
+.confirm-action-card h3{
+  margin:5px 0 8px;
+  font-size:24px;
+}
+.confirm-action-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+.confirm-action-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:18px;
+}
+.confirm-action-buttons .btn{
+  min-height:48px;
+}
+
+@media(max-width:560px){
+  .simple-home-card h2{
+    margin-bottom:2px;
+  }
+  .home-quick-actions{
+    margin-top:12px;
+    gap:8px;
+  }
+  .compact-action-btn{
+    min-height:58px;
+    padding:11px 14px;
+    border-radius:16px;
+    grid-template-columns:38px 1fr auto;
+  }
+  .compact-action-btn .big-action-icon{
+    font-size:26px;
+  }
+  .compact-action-btn .big-action-copy strong{
+    font-size:16px;
+  }
+  .compact-action-btn .big-action-arrow{
+    font-size:27px;
+  }
+}
+
+@media(max-width:390px){
+  .compact-action-btn{
+    min-height:56px;
+    padding:10px 12px;
+  }
+  .compact-action-btn .big-action-copy strong{
+    font-size:15px;
+  }
+  .confirm-action-buttons{
+    grid-template-columns:1fr;
+  }
+}

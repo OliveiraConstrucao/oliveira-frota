@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=26" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -53,16 +53,24 @@
         <div class="simple-home-card">
           <img src="assets/oliveira-frota-banner.png" alt="Oliveira Frota" class="simple-home-banner" />
           <h2>O que você quer fazer?</h2>
-          <p>Para lançar um abastecimento, toque no botão abaixo.</p>
 
-          <button class="big-action-btn" data-nav="record" type="button">
-            <span class="big-action-icon">⛽</span>
-            <span class="big-action-copy">
-              <strong>REGISTRAR ABASTECIMENTO</strong>
-              <small>É rápido. O app faz as contas.</small>
-            </span>
-            <span class="big-action-arrow">›</span>
-          </button>
+          <div class="home-quick-actions">
+            <button class="big-action-btn compact-action-btn" data-nav="record" type="button">
+              <span class="big-action-icon">⛽</span>
+              <span class="big-action-copy">
+                <strong>REGISTRAR ABASTECIMENTO</strong>
+              </span>
+              <span class="big-action-arrow">›</span>
+            </button>
+
+            <button id="homeOilChangeBtn" class="big-action-btn compact-action-btn oil-home-action" type="button">
+              <span class="big-action-icon">🛢️</span>
+              <span class="big-action-copy">
+                <strong>REGISTRAR TROCA DE ÓLEO</strong>
+              </span>
+              <span class="big-action-arrow">›</span>
+            </button>
+          </div>
 
           <div class="simple-day-summary">
             <span>Hoje</span>
@@ -317,7 +325,7 @@
           <span class="eyebrow">MANUTENÇÃO</span>
           <h2>Troca de óleo</h2>
           <p>Quando o óleo for trocado, registre aqui. Não precisa informar isso nos abastecimentos.</p>
-          <button class="big-action-btn oil-action-btn" data-nav="oil-record" type="button">
+          <button id="oilScreenRegisterBtn" class="big-action-btn oil-action-btn" type="button">
             <span class="big-action-icon">🛢️</span>
             <span class="big-action-copy">
               <strong>REGISTRAR TROCA DE ÓLEO</strong>
@@ -637,6 +645,19 @@
     </div>
   </dialog>
 
+  <dialog id="oilConfirmDialog" class="dialog confirm-action-dialog">
+    <div class="dialog-card confirm-action-card">
+      <div class="confirm-action-icon">🛢️</div>
+      <span class="eyebrow">CONFIRMAÇÃO</span>
+      <h3>Registrar troca de óleo?</h3>
+      <p>Confirme somente se a troca de óleo foi realmente realizada no veículo.</p>
+      <div class="confirm-action-buttons">
+        <button id="cancelOilConfirmBtn" class="btn btn-secondary" type="button">Cancelar</button>
+        <button id="confirmOilChangeBtn" class="btn btn-primary" type="button">Confirmar troca</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="oilSuccessDialog" class="dialog success-dialog">
     <div class="dialog-card success-dialog-card">
       <div class="success-check">✓</div>
@@ -668,6 +689,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=25" defer></script>
+  <script src="app.js?v=26" defer></script>
 </body>
 </html>

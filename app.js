@@ -884,6 +884,26 @@ function renderOil(){
   $('oilList').innerHTML=list.length?list.map(v=>oilCard(v,oilStatus(v))).join(''):'<div class="empty">Nenhum veículo cadastrado.</div>';
 }
 
+
+function openOilChangeConfirmation(){
+  const dlg=$('oilConfirmDialog');
+  if(dlg && !dlg.open) dlg.showModal();
+}
+function closeOilChangeConfirmation(){
+  const dlg=$('oilConfirmDialog');
+  if(dlg?.open) dlg.close();
+}
+$('homeOilChangeBtn')?.addEventListener('click',openOilChangeConfirmation);
+$('oilScreenRegisterBtn')?.addEventListener('click',openOilChangeConfirmation);
+$('cancelOilConfirmBtn')?.addEventListener('click',closeOilChangeConfirmation);
+$('confirmOilChangeBtn')?.addEventListener('click',()=>{
+  closeOilChangeConfirmation();
+  nav('oil-record');
+});
+$('oilConfirmDialog')?.addEventListener('click',e=>{
+  if(e.target===$('oilConfirmDialog')) closeOilChangeConfirmation();
+});
+
 function renderOilVehicleOptions(selected=''){
   const sel=$('oilVehicle');
   if(!sel) return;
@@ -1462,7 +1482,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='25';
+const OLIVEIRA_APP_VERSION='26';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
