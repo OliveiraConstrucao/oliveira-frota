@@ -2310,3 +2310,62 @@ body.splash-lock{
     min-height:48px;
   }
 }
+
+
+/* =========================
+   V35 — FUNDO + MOVIMENTAÇÕES
+   ========================= */
+
+html, body{
+  background:
+    radial-gradient(circle at top right, rgba(189, 138, 42, 0.14), transparent 24%),
+    linear-gradient(180deg, #f5f0e8 0%, #eee7dd 100%);
+  min-height:100%;
+}
+
+body{
+  background-attachment:fixed;
+}
+
+.app-shell,
+main,
+main.app-main,
+.screen,
+.screen-page,
+.view,
+.page-wrap{
+  background:transparent;
+}
+
+.recent-movements-head-simple{
+  justify-content:flex-end;
+}
+
+.recent-movements-empty{
+  margin-top:10px;
+  padding:18px 16px;
+  border:1px solid #e5ddd3;
+  border-radius:18px;
+  background:rgba(255,255,255,0.78);
+  color:#6d6158;
+  text-align:center;
+  font-weight:700;
+  line-height:1.45;
+  box-shadow:0 10px 24px rgba(86, 58, 28, 0.05);
+}
+
+.recent-table-wrap.hidden{
+  display:none !important;
+}
+
+.home-card,
+.surface-card,
+.simple-card,
+.menu-card,
+.record-card,
+.system-card,
+.manual-accordion,
+.manual-card,
+.recent-movements-section{
+  box-shadow:0 10px 24px rgba(86, 58, 28, 0.05);
+}

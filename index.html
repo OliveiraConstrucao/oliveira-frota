@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=34" />
+  <link rel="stylesheet" href="styles.css?v=35" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -73,16 +73,16 @@
           </div>
         </div>
 
-        <section class="recent-movements-section" aria-labelledby="recentMovementsTitle">
-          <div class="recent-movements-head">
-            <div>
-              <span class="eyebrow">MOVIMENTAÇÃO</span>
-              <h3 id="recentMovementsTitle">Últimas 10 movimentações</h3>
-            </div>
+        <section class="recent-movements-section" aria-label="Movimentações recentes">
+          <div class="recent-movements-head recent-movements-head-simple">
             <span class="live-update-badge"><span></span> Atualização automática</span>
           </div>
 
-          <div class="recent-table-wrap">
+          <div id="recentMovementsEmpty" class="recent-movements-empty">
+            Ainda não teve lançamento.
+          </div>
+
+          <div id="recentTableWrap" class="recent-table-wrap hidden">
             <table class="recent-movements-table">
               <thead>
                 <tr>
@@ -95,9 +95,7 @@
                   <th>Responsável</th>
                 </tr>
               </thead>
-              <tbody id="recentMovementsBody">
-                <tr><td colspan="7" class="recent-empty">Nenhuma movimentação registrada.</td></tr>
-              </tbody>
+              <tbody id="recentMovementsBody"></tbody>
             </table>
           </div>
         </section>
@@ -1024,6 +1022,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=32" defer></script>
-  <script src="app.js?v=34" defer></script>
+  <script src="app.js?v=35" defer></script>
 </body>
 </html>

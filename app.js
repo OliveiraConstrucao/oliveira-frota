@@ -855,6 +855,8 @@ function recentMovementOilValue(record){
 }
 function renderRecentMovements(){
   const body=$('recentMovementsBody');
+  const empty=$('recentMovementsEmpty');
+  const tableWrap=$('recentTableWrap');
   if(!body) return;
 
   const list=visibleRecords()
@@ -863,9 +865,14 @@ function renderRecentMovements(){
     .slice(0,10);
 
   if(!list.length){
-    body.innerHTML='<tr><td colspan="7" class="recent-empty">Nenhuma movimentação registrada.</td></tr>';
+    body.innerHTML='';
+    if(empty) empty.classList.remove('hidden');
+    if(tableWrap) tableWrap.classList.add('hidden');
     return;
   }
+
+  if(empty) empty.classList.add('hidden');
+  if(tableWrap) tableWrap.classList.remove('hidden');
 
   body.innerHTML=list.map(r=>{
     const oil=recentMovementOilValue(r);
@@ -2316,7 +2323,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='34';
+const OLIVEIRA_APP_VERSION='35';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
