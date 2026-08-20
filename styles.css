@@ -651,3 +651,110 @@ body.splash-lock{
     font-size:10px;
   }
 }
+
+
+/* =========================================================
+   V18 — ARTE PRINCIPAL NO TOPO E NA PÁGINA INICIAL
+   ========================================================= */
+.simple-topbar{
+  min-height:108px;
+  padding:10px clamp(12px,2.5vw,24px);
+  background:linear-gradient(135deg,#7b1f23 0%, #972d2f 48%, #be7a1c 100%);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  gap:12px;
+}
+.brand-banner-wrap{
+  flex:1;
+  min-width:0;
+  align-items:center;
+}
+.brand-banner-art{
+  display:block;
+  width:min(680px,100%);
+  max-width:100%;
+  height:auto;
+  max-height:90px;
+  object-fit:contain;
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.25));
+}
+.simple-topbar .connection-badge{
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.20);
+  color:#fff;
+  backdrop-filter:blur(8px);
+}
+.simple-topbar .connection-badge.offline{
+  background:rgba(255,244,217,.18);
+  color:#fff2c7;
+  border-color:rgba(255,242,199,.24);
+}
+.simple-topbar .status-dot{box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+
+.simple-home-card{
+  overflow:hidden;
+}
+.simple-home-banner{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:24px;
+  margin:0 0 18px;
+  border:1px solid #e6d0a5;
+  box-shadow:0 10px 28px rgba(0,0,0,.10);
+}
+.simple-home-card h2{
+  margin:4px 0 8px;
+  font-size:clamp(32px,5vw,52px);
+  line-height:1.04;
+}
+.simple-home-card p{
+  font-size:clamp(18px,2.6vw,25px);
+  max-width:720px;
+  margin:0 auto 0;
+}
+
+@media(max-width:820px){
+  .brand-banner-art{
+    width:min(560px,100%);
+    max-height:78px;
+  }
+}
+
+@media(max-width:560px){
+  .simple-topbar{
+    width:100%;
+    min-height:92px;
+    padding:10px 10px 10px 12px;
+    border-radius:0;
+    gap:8px;
+  }
+  .brand-banner-wrap{
+    width:100%;
+  }
+  .brand-banner-art{
+    width:100%;
+    max-width:calc(100vw - 68px);
+    max-height:70px;
+  }
+  .simple-home-banner{
+    border-radius:18px;
+    margin:0 0 16px;
+  }
+  .simple-home-card h2{
+    font-size:clamp(24px,7.4vw,34px);
+  }
+  .simple-home-card p{
+    font-size:clamp(14px,4.8vw,18px);
+  }
+}
+
+@media(max-width:390px){
+  .simple-topbar{
+    min-height:86px;
+    padding:9px 8px 9px 10px;
+  }
+  .brand-banner-art{
+    max-width:calc(100vw - 62px);
+    max-height:62px;
+  }
+}
