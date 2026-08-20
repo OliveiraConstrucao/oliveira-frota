@@ -1,6 +1,6 @@
 // Oliveira Frota — Firebase configurado
 window.OLIVEIRA_FIREBASE_CONFIG = Object.freeze({
-  apiKey: "AIzaSyDs-EU88P_2uP4Ccl95GRRJjrP8kyM25X0",
+  apiKey: "AIzaSyDs-EU88P_2uP4Ccl95GRRJJrP8kyM25X0",
   authDomain: "oliveira-frota.firebaseapp.com",
   projectId: "oliveira-frota",
   storageBucket: "oliveira-frota.firebasestorage.app",

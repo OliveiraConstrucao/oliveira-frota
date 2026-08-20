@@ -1,0 +1,19 @@
+OLIVEIRA FROTA — V11
+
+Correções:
+- apiKey do Firebase corrigida conforme a configuração original do Firebase Console;
+- cache-busting aplicado a app.js, cloud-sync.js, firebase-config.js e styles.css;
+- service worker atualizado para nova versão;
+- diagnóstico detalhado do Firebase mantido.
+
+PUBLICAÇÃO
+1. Extraia este ZIP.
+2. Envie TODO o conteúdo ao repositório OliveiraConstrucao/oliveira-frota.
+3. Substitua os arquivos existentes e faça Commit changes.
+4. Aguarde o GitHub Pages atualizar.
+5. Abra:
+   https://oliveiraconstrucao.github.io/oliveira-frota/?v=11
+6. Recarregue uma segunda vez se o PWA já estiver aberto.
+7. Vá em Dados > Firebase > Conectar nuvem.
+
+A senha do Firebase não fica gravada no código.
