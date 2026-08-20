@@ -55,7 +55,26 @@ function oilStatus(v){
 }
 
 function showToast(msg){
-  const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.classList.remove('show'),2200);
+  const el=$('toast');
+  const openDialog=document.querySelector('dialog[open]');
+  if(openDialog){
+    // <dialog> usa a "top layer" do navegador; mover o toast para dentro
+    // do modal garante que a mensagem não fique borrada atrás do backdrop.
+    openDialog.appendChild(el);
+  }else if(el.parentElement!==document.body){
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(showToast.t);
+  showToast.t=setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>{
+      if(!document.querySelector('dialog[open]') && el.parentElement!==document.body){
+        document.body.appendChild(el);
+      }
+    },220);
+  },3200);
 }
 
 function nav(view){

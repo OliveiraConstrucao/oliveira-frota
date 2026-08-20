@@ -1,0 +1,11 @@
+OLIVEIRA FROTA — CORREÇÃO DAS MENSAGENS
+
+Correção aplicada:
+- mensagens de erro/sucesso agora aparecem por cima dos modais;
+- mensagens de login Firebase ficam legíveis;
+- tempo de exibição aumentado;
+- cache do PWA atualizado para forçar a nova versão.
+
+Publicação:
+Envie todo o conteúdo deste pacote ao repositório GitHub
+OliveiraConstrucao/oliveira-frota, substituindo os arquivos atuais.
