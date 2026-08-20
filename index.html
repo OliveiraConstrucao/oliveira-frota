@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=21" />
+  <link rel="stylesheet" href="styles.css?v=23" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -69,6 +69,34 @@
             <strong id="simpleTodayCount">0 registros</strong>
           </div>
         </div>
+
+        <section class="recent-movements-section" aria-labelledby="recentMovementsTitle">
+          <div class="recent-movements-head">
+            <div>
+              <span class="eyebrow">MOVIMENTAÇÃO</span>
+              <h3 id="recentMovementsTitle">Últimas 10 movimentações</h3>
+            </div>
+            <span class="live-update-badge"><span></span> Atualização automática</span>
+          </div>
+
+          <div class="recent-table-wrap">
+            <table class="recent-movements-table">
+              <thead>
+                <tr>
+                  <th>Veículo</th>
+                  <th>Placa</th>
+                  <th>Odômetro</th>
+                  <th>Quant. por litro</th>
+                  <th>Data</th>
+                  <th>Troca de óleo</th>
+                </tr>
+              </thead>
+              <tbody id="recentMovementsBody">
+                <tr><td colspan="6" class="recent-empty">Nenhuma movimentação registrada.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <div id="simpleOilAlert" class="simple-alert hidden"></div>
       </section>
@@ -617,6 +645,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=20" defer></script>
+  <script src="app.js?v=23" defer></script>
 </body>
 </html>

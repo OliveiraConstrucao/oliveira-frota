@@ -834,3 +834,119 @@ body.splash-lock{
     border-radius:20px 20px 12px 12px;
   }
 }
+
+
+/* =========================================================
+   V23 — ÚLTIMAS 10 MOVIMENTAÇÕES EM TEMPO REAL
+   ========================================================= */
+.recent-movements-section{
+  margin-top:16px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+.recent-movements-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.recent-movements-head h3{
+  margin:3px 0 0;
+  font-size:21px;
+}
+.live-update-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+  border-radius:999px;
+  padding:6px 9px;
+  background:var(--green-soft);
+  color:var(--green);
+  font-size:10px;
+  font-weight:900;
+}
+.live-update-badge>span{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+  box-shadow:0 0 0 3px rgba(47,125,74,.12);
+}
+.recent-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border:1px solid #e4e4e1;
+  border-radius:14px;
+}
+.recent-movements-table{
+  width:100%;
+  min-width:760px;
+  border-collapse:collapse;
+  background:#fff;
+}
+.recent-movements-table th{
+  background:#8f2e2f;
+  color:#fff;
+  padding:11px 10px;
+  text-align:left;
+  font-size:11px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.recent-movements-table td{
+  padding:10px;
+  border-bottom:1px solid #ecece9;
+  font-size:12px;
+  color:#333;
+  white-space:nowrap;
+}
+.recent-movements-table tbody tr:nth-child(even){
+  background:#faf9f6;
+}
+.recent-movements-table tbody tr:last-child td{
+  border-bottom:0;
+}
+.recent-movements-table td:first-child{
+  min-width:175px;
+}
+.recent-plate{
+  color:var(--wine);
+  font-weight:900;
+  letter-spacing:.04em;
+}
+.recent-empty{
+  padding:20px!important;
+  text-align:center;
+  color:var(--muted)!important;
+}
+@media(max-width:560px){
+  .recent-movements-section{
+    margin-top:12px;
+    padding:13px 12px;
+    border-radius:18px;
+  }
+  .recent-movements-head{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:7px;
+  }
+  .recent-movements-head h3{
+    font-size:19px;
+  }
+  .recent-table-wrap{
+    border-radius:12px;
+  }
+  .recent-movements-table{
+    min-width:720px;
+  }
+  .recent-movements-table th,
+  .recent-movements-table td{
+    padding:9px 8px;
+  }
+}

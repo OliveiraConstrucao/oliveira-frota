@@ -19,6 +19,120 @@ function load(){
   try { state.syncQueue = JSON.parse(localStorage.getItem(KEYS.queue)) || []; } catch { state.syncQueue = []; }
   try { state.meta = JSON.parse(localStorage.getItem(KEYS.meta)) || {}; } catch { state.meta = {}; }
 }
+
+function ensurePresentationDemoData(){
+  // Esta versão é de apresentação. Não recria os dados depois que a
+  // limpeza de testes tiver sido executada neste aparelho.
+  if(state.meta?.testDataClearedAt) return false;
+
+  const now='2026-08-20T17:30:00-03:00';
+  let changed=false;
+
+  const addQueue=(entityType,entityId,updatedAt)=>{
+    state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===entityId));
+    state.syncQueue.push({id:uuid(),entityType,entityId,updatedAt:updatedAt||now});
+  };
+
+  const demoVehicles=[
+    {
+      id:'demo-v23-basculante-02',
+      name:'Caminhão Basculante 02',
+      plate:'RFA2C18',
+      createdAt:'2026-08-09T08:00:00-03:00',
+      updatedAt:now,
+      demoSeed:true
+    },
+    {
+      id:'demo-v23-cacamba-03',
+      name:'Caminhão Caçamba 03',
+      plate:'RFB3D29',
+      createdAt:'2026-08-09T08:05:00-03:00',
+      updatedAt:now,
+      demoSeed:true
+    }
+  ];
+
+  for(const v of demoVehicles){
+    if(!state.vehicles.some(x=>x.id===v.id)){
+      state.vehicles.push(v);
+      addQueue('vehicle',v.id,v.updatedAt);
+      changed=true;
+    }
+  }
+
+  const demoOilChanges=[
+    {
+      id:'demo-v23-oil-basculante-02',
+      vehicleId:'demo-v23-basculante-02',
+      vehicle:'Caminhão Basculante 02',
+      plate:'RFA2C18',
+      odometer:44000,
+      nextOdometer:49000,
+      date:'2026-07-05',
+      createdAt:'2026-07-05T10:15:00-03:00',
+      updatedAt:now,
+      demoSeed:true
+    },
+    {
+      id:'demo-v23-oil-cacamba-03',
+      vehicleId:'demo-v23-cacamba-03',
+      vehicle:'Caminhão Caçamba 03',
+      plate:'RFB3D29',
+      odometer:62000,
+      nextOdometer:67000,
+      date:'2026-07-20',
+      createdAt:'2026-07-20T14:10:00-03:00',
+      updatedAt:now,
+      demoSeed:true
+    }
+  ];
+
+  for(const o of demoOilChanges){
+    if(!state.oilChanges.some(x=>x.id===o.id)){
+      state.oilChanges.push(o);
+      addQueue('oilChange',o.id,o.updatedAt);
+      changed=true;
+    }
+  }
+
+  const demoRecords=[
+    {id:'demo-v23-b02-0810',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:47210,liters:115.00,quantity:'',date:'2026-08-10',oil:49000,createdAt:'2026-08-10T07:45:00-03:00'},
+    {id:'demo-v23-c03-0809',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:63500,liters:98.00,quantity:'',date:'2026-08-09',oil:67000,createdAt:'2026-08-09T17:10:00-03:00'},
+
+    {id:'demo-v23-b02-0812',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:47510,liters:109.50,quantity:'2.74',date:'2026-08-12',oil:49000,createdAt:'2026-08-12T07:55:00-03:00'},
+    {id:'demo-v23-c03-0811',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:63784,liters:92.40,quantity:'3.07',date:'2026-08-11',oil:67000,createdAt:'2026-08-11T17:25:00-03:00'},
+
+    {id:'demo-v23-b02-0814',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:47822,liters:112.00,quantity:'2.79',date:'2026-08-14',oil:49000,createdAt:'2026-08-14T08:20:00-03:00'},
+    {id:'demo-v23-c03-0813',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:64072,liters:93.70,quantity:'3.07',date:'2026-08-13',oil:67000,createdAt:'2026-08-13T17:05:00-03:00'},
+
+    {id:'demo-v23-b02-0816',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:48135,liters:110.30,quantity:'2.84',date:'2026-08-16',oil:49000,createdAt:'2026-08-16T07:30:00-03:00'},
+    {id:'demo-v23-c03-0815',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:64366,liters:95.20,quantity:'3.09',date:'2026-08-15',oil:67000,createdAt:'2026-08-15T16:55:00-03:00'},
+
+    {id:'demo-v23-b02-0818',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:48452,liters:111.80,quantity:'2.84',date:'2026-08-18',oil:49000,createdAt:'2026-08-18T08:05:00-03:00'},
+    {id:'demo-v23-c03-0817',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:64655,liters:94.10,quantity:'3.07',date:'2026-08-17',oil:67000,createdAt:'2026-08-17T17:20:00-03:00'},
+
+    {id:'demo-v23-b02-0820',vehicleId:'demo-v23-basculante-02',vehicle:'Caminhão Basculante 02',plate:'RFA2C18',odometer:48760,liters:108.70,quantity:'2.83',date:'2026-08-20',oil:49000,createdAt:'2026-08-20T07:50:00-03:00'},
+    {id:'demo-v23-c03-0819',vehicleId:'demo-v23-cacamba-03',vehicle:'Caminhão Caçamba 03',plate:'RFB3D29',odometer:64952,liters:96.40,quantity:'3.08',date:'2026-08-19',oil:67000,createdAt:'2026-08-19T17:15:00-03:00'}
+  ];
+
+  for(const base of demoRecords){
+    if(!state.records.some(x=>x.id===base.id)){
+      const record={...base,updatedAt:now,demoSeed:true};
+      state.records.push(record);
+      addQueue('record',record.id,record.updatedAt);
+      changed=true;
+    }
+  }
+
+  if(changed){
+    state.meta.demoPresentationSeedV23=true;
+    state.meta.lastLocalChange=now;
+    save();
+    if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),450);
+  }
+  return changed;
+}
+
 function save(){
   localStorage.setItem(KEYS.vehicles, JSON.stringify(state.vehicles));
   localStorage.setItem(KEYS.records, JSON.stringify(state.records));
@@ -150,7 +264,43 @@ document.addEventListener('click', e=>{
   const btn=e.target.closest('[data-nav]'); if(btn) nav(btn.dataset.nav);
 });
 
+
+function recentMovementOilValue(record){
+  const snapshot=Number(record?.oil);
+  if(Number.isFinite(snapshot) && snapshot>0) return snapshot;
+  const ref=oilReference(record?.vehicleId);
+  return Number.isFinite(Number(ref?.nextOdometer)) ? Number(ref.nextOdometer) : null;
+}
+function renderRecentMovements(){
+  const body=$('recentMovementsBody');
+  if(!body) return;
+
+  const list=visibleRecords()
+    .slice()
+    .sort((a,b)=>(b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||'')))
+    .slice(0,10);
+
+  if(!list.length){
+    body.innerHTML='<tr><td colspan="6" class="recent-empty">Nenhuma movimentação registrada.</td></tr>';
+    return;
+  }
+
+  body.innerHTML=list.map(r=>{
+    const oil=recentMovementOilValue(r);
+    const quantity=fmtConsumptionValue(r.quantity);
+    return `<tr>
+      <td><strong>${escapeHTML(r.vehicle||'—')}</strong></td>
+      <td><span class="recent-plate">${escapeHTML(r.plate||'—')}</span></td>
+      <td>${Number.isFinite(Number(r.odometer))?Number(r.odometer).toLocaleString('pt-BR'):'—'}</td>
+      <td>${escapeHTML(quantity)}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${oil===null?'—':oil.toLocaleString('pt-BR')}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderHome(){
+  renderRecentMovements();
   const todayCount=visibleRecords().filter(r=>r.date===todayISO()).length;
   if($('simpleTodayCount')) $('simpleTodayCount').textContent=`${todayCount} ${todayCount===1?'registro':'registros'}`;
   const attention=activeVehicles()
@@ -1311,9 +1461,10 @@ function offerInstallOnFirstVisit(){
   },1800);
 }
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=17').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=23').catch(()=>{})); }
 
 load();
+ensurePresentationDemoData();
 playOpeningSplash();
 updateSyncUI();
 updateInstallUI();
