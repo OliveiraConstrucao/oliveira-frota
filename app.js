@@ -1,4 +1,7 @@
 const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', oilChanges: 'oliveira_frota_oil_changes_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
+const DEVICE_OWNER_KEY='oliveira_frota_device_owner_v1';
+const DEVICE_ID_KEY='oliveira_frota_device_id_v1';
+
 const state = { vehicles: [], records: [], oilChanges: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1, oilStep: 1 };
 
 const $ = (id) => document.getElementById(id);
@@ -11,6 +14,47 @@ const fmtConsumption = (v) => { const n=consumptionNumber(v); return n===null ? 
 const fmtConsumptionValue = (v) => { const n=consumptionNumber(v); return n===null ? (String(v||'').trim() || '—') : n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 const escapeHTML = (s='') => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+function deviceOwnerName(){
+  return String(localStorage.getItem(DEVICE_OWNER_KEY)||'').trim();
+}
+function deviceId(){
+  let id=String(localStorage.getItem(DEVICE_ID_KEY)||'').trim();
+  if(!id){
+    id=uuid();
+    localStorage.setItem(DEVICE_ID_KEY,id);
+  }
+  return id;
+}
+function recordOperator(r){
+  const op=String(r?.operator||'').trim();
+  if(op) return op;
+  return r?.demoSeed ? 'Demonstração' : 'Não identificado';
+}
+function updateDeviceOwnerMenu(){
+  const label=$('deviceOwnerMenuLabel');
+  if(label) label.textContent=deviceOwnerName() || 'Identificar usuário';
+}
+function openDeviceOwnerDialog({required=false}={}){
+  const dlg=$('deviceOwnerDialog');
+  if(!dlg) return;
+  dlg.dataset.required=required?'1':'0';
+  const current=deviceOwnerName();
+  $('deviceOwnerNameInput').value=current;
+  $('deviceOwnerIntro').textContent=required
+    ? 'Antes de continuar, informe o nome da pessoa que normalmente fará os lançamentos neste celular.'
+    : 'Se este aparelho mudou de funcionário, altere o nome abaixo. Os lançamentos antigos não serão modificados.';
+  $('deviceOwnerCancelBtn').classList.toggle('hidden',required);
+  if(!dlg.open) dlg.showModal();
+  setTimeout(()=>$('deviceOwnerNameInput')?.focus(),120);
+}
+function promptDeviceOwnerIfNeeded(){
+  updateDeviceOwnerMenu();
+  if(deviceOwnerName()) return false;
+  setTimeout(()=>openDeviceOwnerDialog({required:true}),2050);
+  return true;
+}
+
 
 function load(){
   try { state.vehicles = JSON.parse(localStorage.getItem(KEYS.vehicles)) || []; } catch { state.vehicles = []; }
@@ -281,6 +325,9 @@ function closeOpenDialogFromBack(){
   const dialogs=[...document.querySelectorAll('dialog[open]')];
   const dlg=dialogs[dialogs.length-1];
   if(!dlg) return false;
+  if(dlg.id==='deviceOwnerDialog' && dlg.dataset.required==='1'){
+    return true;
+  }
   try{ dlg.close(); }catch{}
   if(dlg.id==='pdfPreviewDialog' && typeof clearCurrentPdfPreview==='function'){
     setTimeout(clearCurrentPdfPreview,120);
@@ -343,7 +390,7 @@ function renderRecentMovements(){
     .slice(0,10);
 
   if(!list.length){
-    body.innerHTML='<tr><td colspan="6" class="recent-empty">Nenhuma movimentação registrada.</td></tr>';
+    body.innerHTML='<tr><td colspan="7" class="recent-empty">Nenhuma movimentação registrada.</td></tr>';
     return;
   }
 
@@ -357,6 +404,7 @@ function renderRecentMovements(){
       <td>${escapeHTML(quantity)}</td>
       <td>${fmtDate(r.date)}</td>
       <td>${oil===null?'—':oil.toLocaleString('pt-BR')}</td>
+      <td>${escapeHTML(recordOperator(r))}</td>
     </tr>`;
   }).join('');
 }
@@ -573,7 +621,8 @@ $('recordForm').addEventListener('submit',e=>{
   const record={
     id:uuid(), vehicleId:v.id, vehicle:v.name, plate:v.plate,
     odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value || todayISO(),
-    oil:oilRef?.nextOdometer || '', createdAt:now, updatedAt:now
+    oil:oilRef?.nextOdometer || '', operator:deviceOwnerName() || 'Não identificado', deviceId:deviceId(),
+    createdAt:now, updatedAt:now
   };
   state.records.push(record);
   queueChange('record',record.id);
@@ -750,6 +799,7 @@ function historyCard(r){
       <div><span class="muted">Litros</span><strong>${fmtLiters(r.liters)}</strong></div>
       <div><span class="muted">Quant./litro</span><strong>${escapeHTML(fmtConsumption(r.quantity))}</strong></div>
       <div><span class="muted">Próx. troca óleo</span><strong>${r.oil?fmtKm(r.oil):'—'}</strong></div>
+      <div><span class="muted">Responsável</span><strong>${escapeHTML(recordOperator(r))}</strong></div>
     </div>
   </article>`;
 }
@@ -768,6 +818,7 @@ function correctionCard(r){
     <div class="list-card-main">
       <h4>${escapeHTML(r.vehicle)} <span class="plate">${escapeHTML(r.plate)}</span></h4>
       <p>${fmtDate(r.date)} • ${fmtKm(r.odometer)} • ${fmtLiters(r.liters)} • ${escapeHTML(fmtConsumption(r.quantity))}</p>
+      <p class="record-operator-line">Responsável: <strong>${escapeHTML(recordOperator(r))}</strong></p>
       ${cancelled?'<span class="badge cancelled">Cancelado</span>':''}
     </div>
     <div class="correction-actions">
@@ -926,7 +977,7 @@ function oilCard(v,s){
   const legacy=oilReference(v.id);
   const current=currentVehicleOdometer(v.id);
   const lastLine=change
-    ? `Última troca: ${fmtDate(change.date)} • ${fmtKm(change.odometer)}`
+    ? `Última troca: ${fmtDate(change.date)} • ${fmtKm(change.odometer)} • ${escapeHTML(recordOperator(change))}`
     : legacy?.source==='legacy'
       ? `Referência antiga: próxima troca em ${fmtKm(legacy.nextOdometer)}`
       : 'Nenhuma troca registrada';
@@ -1067,6 +1118,8 @@ $('oilForm')?.addEventListener('submit',e=>{
     odometer:Number($('oilOdometer').value),
     nextOdometer:Number($('oilNextOdometer').value),
     date:$('oilDate').value || todayISO(),
+    operator:deviceOwnerName() || 'Não identificado',
+    deviceId:deviceId(),
     createdAt:now,
     updatedAt:now
   };
@@ -1389,6 +1442,26 @@ $('clearTestDataBtn')?.addEventListener('click',clearTestData);
 window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
+
+$('deviceOwnerMenuBtn')?.addEventListener('click',()=>openDeviceOwnerDialog({required:false}));
+$('deviceOwnerCancelBtn')?.addEventListener('click',()=>$('deviceOwnerDialog')?.close());
+$('deviceOwnerDialog')?.addEventListener('cancel',e=>{
+  if($('deviceOwnerDialog')?.dataset.required==='1') e.preventDefault();
+});
+$('deviceOwnerForm')?.addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=$('deviceOwnerNameInput').value.trim().replace(/\s+/g,' ');
+  if(name.length<2) return showToast('Informe o nome de quem usa este aparelho.');
+  const wasMissing=!deviceOwnerName();
+  localStorage.setItem(DEVICE_OWNER_KEY,name);
+  deviceId();
+  updateDeviceOwnerMenu();
+  $('deviceOwnerDialog').dataset.required='0';
+  $('deviceOwnerDialog').close();
+  showToast(`Aparelho identificado para ${name}.`);
+  if(wasMissing) setTimeout(offerInstallOnFirstVisit,350);
+});
+
 const INSTALL_OFFER_KEY='oliveira_frota_install_offer_seen_v1';
 
 function playOpeningSplash(){
@@ -1543,7 +1616,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='28';
+const OLIVEIRA_APP_VERSION='29';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
@@ -1616,7 +1689,8 @@ updateSyncUI();
 updateInstallUI();
 renderHome();
 renderVehicleOptions();
-offerInstallOnFirstVisit();
+const ownerRequired=promptDeviceOwnerIfNeeded();
+if(!ownerRequired) offerInstallOnFirstVisit();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
 const initialHash=location.hash.replace('#','');
@@ -1801,8 +1875,8 @@ function buildFleetPdf(records,start,end,vehicle){
   const rowsPerPage=24;
   const pages=[];
   const totalPages=Math.ceil(records.length/rowsPerPage);
-  const colWidths=[164,92,115,150,105,156];
-  const headers=['Veículo','Placa','Odômetro','Quant. por litro','Data','Troca de óleo'];
+  const colWidths=[142,76,94,112,86,132,140];
+  const headers=['Veículo','Placa','Odômetro','Quant. por litro','Data','Troca de óleo','Responsável'];
   const xPositions=[M]; colWidths.forEach(w=>xPositions.push(xPositions[xPositions.length-1]+w));
   const topToY=t=>PH-t;
   const txt=(text,x,top,size=9,bold=false,color=ink)=>`${pdfColor(color)}BT /${bold?'F2':'F1'} ${size} Tf ${pdfNum(x)} ${pdfNum(topToY(top))} Td (${pdfEsc(text)}) Tj ET\n`;
@@ -1835,7 +1909,8 @@ function buildFleetPdf(records,start,end,vehicle){
         Number(r.odometer).toLocaleString('pt-BR'),
         truncateText(fmtConsumptionValue(r.quantity),22),
         fmtDate(r.date),
-        r.oil ? Number(r.oil).toLocaleString('pt-BR') : '—'
+        r.oil ? Number(r.oil).toLocaleString('pt-BR') : '—',
+        truncateText(recordOperator(r),22)
       ];
       for(let k=0;k<vals.length;k++) c+=txt(vals[k],xPositions[k]+6,top+11.8,8,false,ink);
       c+=hline(M,M+tableW,top+rowH,line,.45);

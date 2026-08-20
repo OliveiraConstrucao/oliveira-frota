@@ -1354,3 +1354,80 @@ body.splash-lock{
     height:40px;
   }
 }
+
+
+/* =========================================================
+   V29 — IDENTIFICAÇÃO POR APARELHO
+   ========================================================= */
+.device-owner-menu-card{
+  border:2px solid #c9d9e8;
+  background:#f5faff;
+}
+.device-owner-menu-card .admin-menu-icon{font-size:34px}
+.device-owner-menu-card strong{color:#315f86}
+
+.device-owner-card{
+  width:min(430px,calc(100vw - 28px));
+  text-align:center;
+  padding:25px 21px 20px;
+}
+.device-owner-icon{
+  width:72px;
+  height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 12px;
+  border-radius:50%;
+  background:#edf5fc;
+  font-size:36px;
+}
+.device-owner-card h3{
+  margin:5px 0 8px;
+  font-size:26px;
+}
+.device-owner-card>p{
+  margin:0 auto 16px;
+  max-width:350px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.45;
+}
+.device-owner-field{text-align:left}
+.device-owner-field input{
+  min-height:50px;
+  font-size:17px;
+}
+.device-owner-note{
+  margin:12px 0 14px;
+  padding:11px 12px;
+  border-radius:12px;
+  background:#f4f4f1;
+  color:#555;
+  text-align:left;
+  font-size:11px;
+  line-height:1.45;
+}
+.device-owner-card .btn+.btn{margin-top:8px}
+
+.record-operator-line{
+  margin-top:4px!important;
+  font-size:11px!important;
+  color:var(--muted)!important;
+}
+.recent-movements-table{
+  min-width:900px;
+}
+.history-values{
+  grid-template-columns:repeat(auto-fit,minmax(125px,1fr));
+}
+
+@media(max-width:560px){
+  .device-owner-card{
+    padding:22px 16px 17px;
+  }
+  .device-owner-card h3{font-size:23px}
+  .recent-movements-table{
+    min-width:860px;
+  }
+}

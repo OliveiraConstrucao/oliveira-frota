@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=28" />
+  <link rel="stylesheet" href="styles.css?v=29" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -92,10 +92,11 @@
                   <th>Quant. por litro</th>
                   <th>Data</th>
                   <th>Troca de óleo</th>
+                  <th>Responsável</th>
                 </tr>
               </thead>
               <tbody id="recentMovementsBody">
-                <tr><td colspan="6" class="recent-empty">Nenhuma movimentação registrada.</td></tr>
+                <tr><td colspan="7" class="recent-empty">Nenhuma movimentação registrada.</td></tr>
               </tbody>
             </table>
           </div>
@@ -222,6 +223,11 @@
             <strong>Manual rápido</strong>
             <small>Como usar o app passo a passo</small>
           </button>
+          <button id="deviceOwnerMenuBtn" class="admin-menu-card menu-feature-card device-owner-menu-card" type="button">
+            <span class="admin-menu-icon">👤</span>
+            <strong>Este aparelho</strong>
+            <small id="deviceOwnerMenuLabel">Identificar usuário</small>
+          </button>
           <button id="menuInstallBtn" class="admin-menu-card menu-feature-card install-menu-card" type="button">
             <span class="admin-menu-icon">📲</span>
             <strong>Instalar app</strong>
@@ -341,6 +347,22 @@
             <div class="manual-topic-body">
               <p class="manual-text">Pode fazer o lançamento normalmente. O registro fica guardado no aparelho e será enviado para a nuvem quando a internet voltar.</p>
               <div class="manual-tip">✓ Não é necessário lançar novamente quando a internet voltar.</div>
+            </div>
+          </details>
+
+          <details class="manual-topic">
+            <summary>
+              <span class="manual-topic-icon">👤</span>
+              <span><strong>Quem usa este aparelho?</strong><small>Identificação automática dos lançamentos</small></span>
+            </summary>
+            <div class="manual-topic-body">
+              <ul class="manual-list">
+                <li>Na primeira vez, o app pergunta quem usa aquele aparelho.</li>
+                <li>O nome fica gravado somente naquele celular.</li>
+                <li>Abastecimentos e trocas de óleo passam a registrar automaticamente quem fez o lançamento.</li>
+                <li>Se o aparelho mudar de funcionário, use <b>Menu → Este aparelho</b> para trocar a identificação.</li>
+                <li>Alterar o nome do aparelho não muda os lançamentos antigos.</li>
+              </ul>
             </div>
           </details>
 
@@ -750,6 +772,27 @@
     </div>
   </dialog>
 
+  <dialog id="deviceOwnerDialog" class="dialog device-owner-dialog">
+    <form id="deviceOwnerForm" class="dialog-card device-owner-card" autocomplete="off">
+      <div class="device-owner-icon">👤</div>
+      <span class="eyebrow">IDENTIFICAÇÃO DO APARELHO</span>
+      <h3>Quem usa este aparelho?</h3>
+      <p id="deviceOwnerIntro">Informe o nome da pessoa que normalmente fará os lançamentos neste celular.</p>
+
+      <label class="field device-owner-field">
+        <span>Nome</span>
+        <input id="deviceOwnerNameInput" type="text" maxlength="60" autocomplete="name" placeholder="Ex.: João da Silva" required />
+      </label>
+
+      <div class="device-owner-note">
+        Esse nome será incluído automaticamente nos próximos abastecimentos e trocas de óleo feitos neste aparelho.
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Salvar identificação</button>
+      <button id="deviceOwnerCancelBtn" type="button" class="btn btn-secondary btn-block hidden">Cancelar</button>
+    </form>
+  </dialog>
+
   <dialog id="installDialog" class="dialog install-dialog">
     <div class="dialog-card install-dialog-card">
       <div class="dialog-head">
@@ -840,6 +883,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=28" defer></script>
+  <script src="app.js?v=29" defer></script>
 </body>
 </html>
