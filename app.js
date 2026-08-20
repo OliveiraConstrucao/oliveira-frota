@@ -1,5 +1,5 @@
-const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1' };
-const state = { vehicles: [], records: [], currentVehicleId: null, deferredPrompt: null };
+const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
+const state = { vehicles: [], records: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false };
 
 const $ = (id) => document.getElementById(id);
 const todayISO = () => new Date().toISOString().slice(0,10);
@@ -15,10 +15,23 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${M
 function load(){
   try { state.vehicles = JSON.parse(localStorage.getItem(KEYS.vehicles)) || []; } catch { state.vehicles = []; }
   try { state.records = JSON.parse(localStorage.getItem(KEYS.records)) || []; } catch { state.records = []; }
+  try { state.syncQueue = JSON.parse(localStorage.getItem(KEYS.queue)) || []; } catch { state.syncQueue = []; }
+  try { state.meta = JSON.parse(localStorage.getItem(KEYS.meta)) || {}; } catch { state.meta = {}; }
 }
 function save(){
   localStorage.setItem(KEYS.vehicles, JSON.stringify(state.vehicles));
   localStorage.setItem(KEYS.records, JSON.stringify(state.records));
+  localStorage.setItem(KEYS.queue, JSON.stringify(state.syncQueue));
+  localStorage.setItem(KEYS.meta, JSON.stringify(state.meta));
+}
+function queueChange(entityType, entityId){
+  const now=new Date().toISOString();
+  state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===entityId));
+  state.syncQueue.push({id:uuid(),entityType,entityId,updatedAt:now});
+  state.meta.lastLocalChange=now;
+  save();
+  updateSyncUI();
+  if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),80);
 }
 
 function getVehicle(id){ return state.vehicles.find(v => v.id === id); }
@@ -133,12 +146,13 @@ $('recordForm').addEventListener('submit',e=>{
   if(!Number.isFinite(liters) || liters<=0) return showToast('Informe os litros abastecidos.');
   if(prev && odo <= Number(prev.odometer)) return showToast('O odômetro deve ser maior que o último registro.');
   const consumption=updateConsumption();
-  state.records.push({
+  const record={
     id:uuid(), vehicleId:v.id, vehicle:v.name, plate:v.plate,
     odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value,
     oil:Number($('recordOil').value), createdAt:new Date().toISOString()
-  });
-  save(); e.target.reset(); state.currentVehicleId=v.id;
+  };
+  state.records.push(record);
+  queueChange('record',record.id); e.target.reset(); state.currentVehicleId=v.id;
   showToast(consumption===null?'Primeiro abastecimento salvo. O consumo será calculado no próximo.':'Abastecimento salvo com consumo calculado.');
   renderHome(); prepRecord(v.id);
 });
@@ -178,7 +192,7 @@ $('closeVehicleDialog').addEventListener('click',()=>$('vehicleDialog').close())
 $('vehicleForm').addEventListener('submit',e=>{
   e.preventDefault(); const name=$('vehicleName').value.trim(), plate=$('vehiclePlate').value.trim().toUpperCase();
   if(state.vehicles.some(v=>v.plate.toUpperCase()===plate)) return showToast('Já existe um veículo com essa placa.');
-  state.vehicles.push({id:uuid(),name,plate}); save(); $('vehicleDialog').close(); e.target.reset(); renderVehicles(); renderHome(); showToast('Veículo cadastrado.');
+  const vehicle={id:uuid(),name,plate}; state.vehicles.push(vehicle); queueChange('vehicle',vehicle.id); $('vehicleDialog').close(); e.target.reset(); renderVehicles(); renderHome(); showToast('Veículo cadastrado.');
 });
 $('vehiclePlate').addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
 
@@ -204,14 +218,105 @@ $('clearFilters').addEventListener('click',()=>{$('historySearch').value='';$('h
 function oilCard(v,s){ const r=lastRecord(v.id); return `<article class="list-card"><div class="list-card-main"><h4>${escapeHTML(v.name)} <span class="plate">${escapeHTML(v.plate)}</span></h4><p>Atual: ${r?fmtKm(r.odometer):'—'} • Troca: ${r?fmtKm(r.oil):'—'}</p></div><div class="list-meta"><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div></article>`; }
 function renderOil(){ $('oilList').innerHTML=state.vehicles.length?state.vehicles.map(v=>oilCard(v,oilStatus(v))).join(''):'<div class="empty">Nenhum veículo cadastrado.</div>'; }
 
+// ===== Offline, backup e sincronização =====
+function fmtDateTime(iso){
+  if(!iso) return 'Nunca';
+  try{return new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});}catch{return '—';}
+}
+function cloudConfigured(){
+  try{return Boolean(window.OLIVEIRA_CLOUD_ADAPTER?.isConfigured?.());}catch{return false;}
+}
+function updateSyncUI(){
+  const online=navigator.onLine;
+  const badge=$('connectionBadge');
+  if(badge){ badge.classList.toggle('offline',!online); $('connectionText').textContent=online?'Online':'Offline'; }
+  if($('dataConnection')) $('dataConnection').textContent=online?'Online':'Offline';
+  if($('dataPending')) $('dataPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
+  if($('dataLastBackup')) $('dataLastBackup').textContent=fmtDateTime(state.meta.lastBackupAt);
+  if($('dataCloud')) $('dataCloud').textContent=cloudConfigured()?'Conectada':'Não conectada';
+  if($('syncNowBtn')) $('syncNowBtn').disabled=state.syncing;
+  if($('syncNotice')){
+    let msg='';
+    if(!online) msg='Você está offline. Novos dados continuarão sendo salvos neste aparelho.';
+    else if(!cloudConfigured()) msg='O Firebase ainda não está conectado. Use o backup para proteger os dados até ativarmos a sincronização entre aparelhos.';
+    else if(state.syncing) msg='Sincronizando dados com a nuvem…';
+    else if(state.syncQueue.length) msg=`${state.syncQueue.length} alteração(ões) aguardando sincronização.`;
+    else msg='Dados locais e nuvem estão sincronizados.';
+    $('syncNotice').textContent=msg;
+  }
+}
+function refreshAllViews(){
+  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||'');
+}
+function exportBackup(){
+  const backup={
+    app:'Oliveira Frota', backupVersion:1, exportedAt:new Date().toISOString(),
+    vehicles:state.vehicles, records:state.records
+  };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  const stamp=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}-${String(d.getMinutes()).padStart(2,'0')}`;
+  a.href=url; a.download=`Oliveira_Frota_Backup_${stamp}.json`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  state.meta.lastBackupAt=new Date().toISOString(); save(); updateSyncUI(); showToast('Backup salvo com sucesso.');
+}
+function validBackup(data){
+  return data && Array.isArray(data.vehicles) && Array.isArray(data.records);
+}
+async function importBackup(file){
+  try{
+    const text=await file.text(); const data=JSON.parse(text);
+    if(!validBackup(data)) return showToast('Arquivo de backup inválido.');
+    if(!confirm(`Restaurar ${data.vehicles.length} veículo(s) e ${data.records.length} registro(s)? Os dados atuais serão substituídos.`)) return;
+    state.vehicles=data.vehicles; state.records=data.records;
+    state.syncQueue=[{id:uuid(),entityType:'snapshot',entityId:'all',updatedAt:new Date().toISOString()}];
+    state.meta.lastRestoreAt=new Date().toISOString(); state.meta.lastLocalChange=state.meta.lastRestoreAt;
+    save(); refreshAllViews(); updateSyncUI(); showToast('Backup restaurado.');
+    if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),100);
+  }catch(err){ console.error(err); showToast('Não foi possível restaurar o backup.'); }
+}
+async function attemptCloudSync(manual=false){
+  updateSyncUI();
+  if(!navigator.onLine){ if(manual) showToast('Sem internet. Os dados continuam salvos no aparelho.'); return false; }
+  const adapter=window.OLIVEIRA_CLOUD_ADAPTER;
+  if(!adapter?.isConfigured?.()){
+    if(manual) showToast('Firebase ainda não está conectado.');
+    updateSyncUI(); return false;
+  }
+  if(state.syncing) return false;
+  state.syncing=true; updateSyncUI();
+  try{
+    const result=await adapter.sync({vehicles:state.vehicles,records:state.records,queue:state.syncQueue,meta:state.meta});
+    if(result?.vehicles && Array.isArray(result.vehicles)) state.vehicles=result.vehicles;
+    if(result?.records && Array.isArray(result.records)) state.records=result.records;
+    state.syncQueue=[]; state.meta.lastSyncAt=new Date().toISOString(); save(); refreshAllViews();
+    if(manual) showToast('Sincronização concluída.');
+    return true;
+  }catch(err){ console.error(err); if(manual) showToast('Não foi possível sincronizar agora.'); return false; }
+  finally{ state.syncing=false; updateSyncUI(); }
+}
+$('dataBtn').addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); });
+$('closeDataDialog').addEventListener('click',()=>$('dataDialog').close());
+$('dataDialog').addEventListener('click',e=>{ if(e.target===$('dataDialog')) $('dataDialog').close(); });
+$('exportBackupBtn').addEventListener('click',exportBackup);
+$('importBackupBtn').addEventListener('click',()=>$('importBackupFile').click());
+$('importBackupFile').addEventListener('change',async e=>{ const file=e.target.files?.[0]; if(file) await importBackup(file); e.target.value=''; });
+$('syncNowBtn').addEventListener('click',()=>attemptCloudSync(true));
+window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
+window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
+
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
 $('installBtn').addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(()=>{})); }
 
 load();
+updateSyncUI();
 renderHome();
 renderVehicleOptions();
+if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 const initial=location.hash.replace('#',''); if(['home','record','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
 
 // ===== Relatório em PDF por período =====

@@ -41,7 +41,11 @@
           <p>Controle de veículos</p>
         </div>
       </div>
-      <button id="installBtn" class="btn btn-ghost hidden" type="button">Instalar app</button>
+      <div class="top-actions">
+        <span id="connectionBadge" class="connection-badge" aria-live="polite"><span class="status-dot"></span><span id="connectionText">Online</span></span>
+        <button id="dataBtn" class="btn btn-ghost btn-compact" type="button">Dados</button>
+        <button id="installBtn" class="btn btn-ghost hidden" type="button">Instalar app</button>
+      </div>
     </header>
 
     <main id="mainContent" class="main-content">
@@ -192,7 +196,34 @@
     </form>
   </dialog>
 
+  <dialog id="dataDialog" class="dialog">
+    <div class="dialog-card data-dialog-card">
+      <div class="dialog-head">
+        <div><span class="eyebrow">DADOS</span><h3>Offline, backup e sincronização</h3></div>
+        <button type="button" class="icon-btn" id="closeDataDialog" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="sync-summary">
+        <div class="sync-box"><span>Conexão</span><strong id="dataConnection">—</strong></div>
+        <div class="sync-box"><span>Pendentes</span><strong id="dataPending">0</strong></div>
+        <div class="sync-box"><span>Último backup</span><strong id="dataLastBackup">Nunca</strong></div>
+        <div class="sync-box"><span>Nuvem</span><strong id="dataCloud">Não conectada</strong></div>
+      </div>
+
+      <div id="syncNotice" class="sync-notice"></div>
+
+      <div class="data-actions">
+        <button id="exportBackupBtn" class="btn btn-primary" type="button">Exportar backup</button>
+        <button id="importBackupBtn" class="btn btn-secondary" type="button">Restaurar backup</button>
+        <button id="syncNowBtn" class="btn btn-secondary" type="button">Sincronizar agora</button>
+      </div>
+      <input id="importBackupFile" type="file" accept="application/json,.json" class="hidden" />
+      <p class="dialog-note">O app continua funcionando sem internet. Os registros são salvos neste aparelho. A sincronização entre vários celulares será ativada quando o Firebase for conectado.</p>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="cloud-sync.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>
