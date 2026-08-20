@@ -1461,7 +1461,72 @@ function offerInstallOnFirstVisit(){
   },1800);
 }
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=24').catch(()=>{})); }
+// ===== Atualização automática do PWA =====
+const OLIVEIRA_APP_VERSION='25';
+
+function registerAutoUpdatingServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load',async()=>{
+    try{
+      const alreadyControlled=Boolean(navigator.serviceWorker.controller);
+      let reloadingForUpdate=false;
+
+      // Quando uma versão nova assume o controle, recarrega uma única vez.
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(!alreadyControlled || reloadingForUpdate) return;
+        reloadingForUpdate=true;
+        window.location.reload();
+      });
+
+      const registration=await navigator.serviceWorker.register(
+        `service-worker.js?v=${OLIVEIRA_APP_VERSION}`,
+        {updateViaCache:'none'}
+      );
+
+      const activateWorker=worker=>{
+        if(!worker) return;
+        worker.addEventListener('statechange',()=>{
+          if(worker.state==='installed' && navigator.serviceWorker.controller){
+            worker.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      };
+
+      if(registration.installing) activateWorker(registration.installing);
+
+      registration.addEventListener('updatefound',()=>{
+        activateWorker(registration.installing);
+      });
+
+      if(registration.waiting && navigator.serviceWorker.controller){
+        registration.waiting.postMessage({type:'SKIP_WAITING'});
+      }
+
+      const checkForUpdate=async()=>{
+        if(!navigator.onLine) return;
+        try{
+          await registration.update();
+        }catch(err){
+          console.warn('Verificação de atualização indisponível:',err);
+        }
+      };
+
+      // Verifica sempre ao abrir.
+      await checkForUpdate();
+
+      // Também verifica ao retornar ao app e quando a internet volta.
+      window.addEventListener('pageshow',checkForUpdate);
+      window.addEventListener('online',checkForUpdate);
+      document.addEventListener('visibilitychange',()=>{
+        if(document.visibilityState==='visible') checkForUpdate();
+      });
+    }catch(err){
+      console.warn('Service Worker indisponível:',err);
+    }
+  });
+}
+registerAutoUpdatingServiceWorker();
 
 load();
 ensurePresentationDemoData();
