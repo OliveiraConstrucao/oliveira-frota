@@ -1,0 +1,36 @@
+OLIVEIRA FROTA — V12 MODO SIMPLES
+
+Objetivo:
+Deixar o uso diário muito mais fácil para funcionários com pouca familiaridade
+com aplicativos, mantendo Firebase, offline, backup e relatórios funcionando.
+
+PRINCIPAIS MUDANÇAS
+- Tela inicial com um único botão grande: REGISTRAR ABASTECIMENTO.
+- Registro em 5 etapas, uma pergunta por vez:
+  1. Qual veículo?
+  2. Qual o KM do painel?
+  3. Quantos litros?
+  4. Troca de óleo e data
+  5. Conferir e salvar
+- Veículos aparecem como botões grandes.
+- Placa é automática.
+- Consumo km/l é calculado automaticamente.
+- Data já vem preenchida.
+- Troca de óleo reaproveita o último valor salvo.
+- Confirmação grande "REGISTRO SALVO".
+- Administração separada para a responsável:
+  Veículos, Histórico/PDF, Troca de óleo, Dados/Nuvem.
+- Firebase, funcionamento offline, backup, sincronização e PDF preservados.
+- Mesmas chaves de localStorage: dados existentes não são apagados.
+- Mesmo projeto Firebase e mesma estrutura de dados.
+
+PUBLICAÇÃO NO GITHUB
+1. Faça um backup no app atual em Administração/Dados, se desejar.
+2. Extraia este ZIP.
+3. Envie TODO o conteúdo ao repositório OliveiraConstrucao/oliveira-frota.
+4. Substitua os arquivos existentes e faça Commit changes.
+5. Aguarde o GitHub Pages atualizar.
+6. Abra:
+   https://oliveiraconstrucao.github.io/oliveira-frota/?v=12
+
+Se o app estiver instalado no celular, feche e abra novamente após a atualização.

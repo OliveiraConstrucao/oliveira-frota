@@ -1,5 +1,5 @@
 const KEYS = { vehicles: 'oliveira_frota_vehicles_v1', records: 'oliveira_frota_records_v1', queue: 'oliveira_frota_sync_queue_v1', meta: 'oliveira_frota_meta_v1' };
-const state = { vehicles: [], records: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false };
+const state = { vehicles: [], records: [], syncQueue: [], meta: {}, currentVehicleId: null, deferredPrompt: null, syncing: false, recordStep: 1 };
 
 const $ = (id) => document.getElementById(id);
 const todayISO = () => new Date().toISOString().slice(0,10);
@@ -85,6 +85,7 @@ function nav(view){
   if(view==='history') renderHistory();
   if(view==='oil') renderOil();
   if(view==='home') renderHome();
+  if(view==='admin') updateSyncUI();
   window.scrollTo({top:0,behavior:'smooth'});
   history.replaceState(null,'',`#${view}`);
 }
@@ -94,36 +95,83 @@ document.addEventListener('click', e=>{
 });
 
 function renderHome(){
-  $('statVehicles').textContent=state.vehicles.length;
-  $('statToday').textContent=state.records.filter(r=>r.date===todayISO()).length;
-  const statuses=state.vehicles.map(oilStatus);
-  $('statOilSoon').textContent=statuses.filter(s=>s.type==='soon').length;
-  $('statOilOverdue').textContent=statuses.filter(s=>s.type==='overdue').length;
-  const attention=state.vehicles.map(v=>({v,s:oilStatus(v)})).filter(x=>['soon','overdue'].includes(x.s.type)).slice(0,4);
-  $('homeOilList').innerHTML = attention.length ? attention.map(({v,s})=>oilCard(v,s)).join('') : '<div class="empty">Nenhuma troca próxima ou vencida.</div>';
+  const todayCount=state.records.filter(r=>r.date===todayISO()).length;
+  if($('simpleTodayCount')) $('simpleTodayCount').textContent=`${todayCount} ${todayCount===1?'registro':'registros'}`;
+  const attention=state.vehicles
+    .map(v=>({v,s:oilStatus(v)}))
+    .filter(x=>['soon','overdue'].includes(x.s.type));
+  const alert=$('simpleOilAlert');
+  if(alert){
+    if(attention.length){
+      const overdue=attention.filter(x=>x.s.type==='overdue').length;
+      const soon=attention.filter(x=>x.s.type==='soon').length;
+      alert.innerHTML=`<div class="simple-alert-icon">⚠</div><div><strong>Atenção à troca de óleo</strong><span>${overdue?`${overdue} vencida(s)`:''}${overdue&&soon?' • ':''}${soon?`${soon} próxima(s)`:''}</span></div><button type="button" data-nav="oil">VER</button>`;
+      alert.classList.remove('hidden');
+    }else{
+      alert.classList.add('hidden');
+      alert.innerHTML='';
+    }
+  }
 }
 
 function renderVehicleOptions(selected){
   const sel=$('recordVehicle');
-  sel.innerHTML='<option value="">Selecione</option>'+state.vehicles.map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
+  if(!sel) return;
+  sel.innerHTML='<option value="">Selecione</option>'+state.vehicles
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+    .map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
+  renderSimpleVehicleChoices(selected);
   updatePlate();
 }
+function renderSimpleVehicleChoices(selected=''){
+  const box=$('simpleVehicleChoices');
+  const empty=$('noVehicleSimple');
+  if(!box) return;
+  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  box.innerHTML=list.map(v=>`
+    <button type="button" class="vehicle-choice ${selected===v.id?'selected':''}" data-vehicle-id="${v.id}">
+      <span class="vehicle-choice-icon">🚚</span>
+      <span class="vehicle-choice-text"><strong>${escapeHTML(v.name)}</strong><small>${escapeHTML(v.plate)}</small></span>
+      <span class="vehicle-choice-check">✓</span>
+    </button>`).join('');
+  if(empty) empty.classList.toggle('hidden',list.length>0);
+}
 function updatePlate(){
-  const v=getVehicle($('recordVehicle').value); $('recordPlate').value=v?.plate || '';
+  const v=getVehicle($('recordVehicle').value);
+  $('recordPlate').value=v?.plate || '';
+  renderSimpleVehicleChoices(v?.id || '');
+  const prev=v?lastRecord(v.id):null;
+  if($('lastOdometerSimple')){
+    $('lastOdometerSimple').textContent=prev
+      ? `Último registro: ${Number(prev.odometer).toLocaleString('pt-BR')} km. Digite o número que aparece no painel agora.`
+      : 'Primeiro registro deste veículo. Digite o número que aparece no painel.';
+  }
+  if($('oilSimpleHelp')){
+    $('oilSimpleHelp').textContent=prev?.oil
+      ? `Último valor salvo: ${Number(prev.oil).toLocaleString('pt-BR')} km. Se não mudou, pode deixar assim.`
+      : 'Informe a quilometragem da próxima troca de óleo.';
+  }
 }
 function prepRecord(vehicleId=null){
-  renderVehicleOptions(vehicleId || state.currentVehicleId || '');
+  // Por segurança operacional, um novo lançamento normal sempre começa
+  // pela escolha do veículo. Só pré-seleciona quando a ficha do veículo
+  // chama explicitamente prepRecord(vehicleId).
+  const chosen=vehicleId || '';
+  renderVehicleOptions(chosen);
   $('recordDate').value=todayISO();
   $('recordOdometer').value='';
   $('recordLiters').value='';
   $('recordQuantity').value='';
   $('recordWarning').classList.add('hidden');
-  const selectedId=vehicleId || state.currentVehicleId || $('recordVehicle').value;
-  const r=lastRecord(selectedId);
+  const r=lastRecord(chosen);
   $('recordOil').value=r?.oil || '';
+  updatePlate();
   updateConsumption();
+  setRecordStep(chosen ? 2 : 1);
 }
 $('recordVehicle').addEventListener('change',()=>{
+  state.currentVehicleId=$('recordVehicle').value || null;
   updatePlate();
   const r=lastRecord($('recordVehicle').value);
   $('recordOil').value=r?.oil || '';
@@ -144,24 +192,112 @@ function updateConsumption(){
   const odoRaw=$('recordOdometer').value;
   const litersRaw=$('recordLiters').value;
   const odo=Number(odoRaw), liters=Number(litersRaw), prev=lastRecord(vid);
-  const out=$('recordQuantity'), help=$('recordConsumptionHelp');
+  const out=$('recordQuantity'), help=$('recordConsumptionHelp'), simple=$('simpleConsumptionValue');
   out.value='';
+  if(simple) simple.textContent='—';
   help.classList.remove('consumption-ready');
   help.classList.add('consumption-pending');
-  if(!vid){ help.textContent='Selecione um veículo para calcular o consumo.'; return null; }
-  if(!prev){ help.textContent='Primeiro registro do veículo: o consumo será calculado a partir do próximo abastecimento.'; return null; }
+  if(!vid){ help.textContent='Escolha um veículo primeiro.'; return null; }
+  if(!prev){
+    help.textContent='Primeiro abastecimento: o consumo será calculado no próximo registro.';
+    if(simple) simple.textContent='Primeiro registro';
+    return null;
+  }
   if(odoRaw==='' || litersRaw==='' || !Number.isFinite(odo) || !Number.isFinite(liters) || liters<=0){
-    help.textContent='Informe o odômetro atual e os litros abastecidos.'; return null;
+    help.textContent='Informe o KM atual e os litros abastecidos.'; return null;
   }
   const distance=odo-Number(prev.odometer);
-  if(distance<=0){ help.textContent='O odômetro atual precisa ser maior que o último registro.'; return null; }
+  if(distance<=0){ help.textContent='Confira o KM: ele precisa ser maior que o último registro.'; return null; }
   const kmL=distance/liters;
   out.value=kmL.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  help.textContent=`Cálculo: ${distance.toLocaleString('pt-BR')} km ÷ ${liters.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L = ${kmL.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l.`;
+  if(simple) simple.textContent=`${kmL.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l`;
+  help.textContent=`Percorreu ${distance.toLocaleString('pt-BR')} km desde o último registro.`;
   help.classList.remove('consumption-pending');
   help.classList.add('consumption-ready');
   return kmL;
 }
+
+function setRecordStep(step){
+  const max=5;
+  state.recordStep=Math.max(1,Math.min(max,step));
+  document.querySelectorAll('.record-step').forEach(el=>el.classList.toggle('active',Number(el.dataset.step)===state.recordStep));
+  if($('wizardProgressText')) $('wizardProgressText').textContent=`Etapa ${state.recordStep} de ${max}`;
+  if($('wizardProgressBar')) $('wizardProgressBar').style.width=`${(state.recordStep/max)*100}%`;
+  if($('wizardBackBtn')) $('wizardBackBtn').textContent=state.recordStep===1?'← INÍCIO':'← VOLTAR';
+  if($('wizardNextBtn')) $('wizardNextBtn').classList.toggle('hidden',state.recordStep===5);
+  if($('wizardSaveBtn')) $('wizardSaveBtn').classList.toggle('hidden',state.recordStep!==5);
+  if(state.recordStep===5) updateRecordConfirmation();
+  setTimeout(()=>{
+    const input=document.querySelector(`.record-step[data-step="${state.recordStep}"] input:not([type="hidden"])`);
+    if(input && state.recordStep>1 && state.recordStep<5) input.focus({preventScroll:true});
+  },120);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function validateRecordStep(step){
+  if(step===1){
+    if(!$('recordVehicle').value){ showToast('Toque no veículo abastecido.'); return false; }
+  }
+  if(step===2){
+    const raw=$('recordOdometer').value;
+    const odo=Number(raw), prev=lastRecord($('recordVehicle').value);
+    if(raw==='' || !Number.isFinite(odo) || odo<0){ showToast('Digite o KM que aparece no painel.'); return false; }
+    if(prev && odo<=Number(prev.odometer)){
+      showToast(`Confira o KM. O último foi ${Number(prev.odometer).toLocaleString('pt-BR')}.`);
+      return false;
+    }
+  }
+  if(step===3){
+    const liters=Number($('recordLiters').value);
+    if(!Number.isFinite(liters) || liters<=0){ showToast('Digite quantos litros foram abastecidos.'); return false; }
+  }
+  if(step===4){
+    const oil=Number($('recordOil').value);
+    if(!Number.isFinite(oil) || oil<=0){ showToast('Informe a próxima troca de óleo.'); return false; }
+    if(!$('recordDate').value){ $('recordDate').value=todayISO(); }
+  }
+  return true;
+}
+function updateRecordConfirmation(){
+  const v=getVehicle($('recordVehicle').value);
+  const consumption=updateConsumption();
+  $('confirmVehicle').textContent=v?.name || '—';
+  $('confirmPlate').textContent=v?.plate || '—';
+  $('confirmOdometer').textContent=$('recordOdometer').value ? `${Number($('recordOdometer').value).toLocaleString('pt-BR')} km` : '—';
+  $('confirmLiters').textContent=$('recordLiters').value ? `${Number($('recordLiters').value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L` : '—';
+  $('confirmConsumption').textContent=consumption===null?'Será calculado no próximo registro':`${consumption.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l`;
+  $('confirmOil').textContent=$('recordOil').value ? `${Number($('recordOil').value).toLocaleString('pt-BR')} km` : '—';
+  $('confirmDate').textContent=fmtDate($('recordDate').value);
+}
+document.addEventListener('click',e=>{
+  const choice=e.target.closest('.vehicle-choice');
+  if(!choice) return;
+  const id=choice.dataset.vehicleId;
+  $('recordVehicle').value=id;
+  $('recordVehicle').dispatchEvent(new Event('change'));
+  state.currentVehicleId=id;
+  setRecordStep(2);
+});
+$('wizardNextBtn')?.addEventListener('click',()=>{
+  if(validateRecordStep(state.recordStep)) setRecordStep(state.recordStep+1);
+});
+$('wizardBackBtn')?.addEventListener('click',()=>{
+  if(state.recordStep===1) nav('home');
+  else setRecordStep(state.recordStep-1);
+});
+$('wizardExitBtn')?.addEventListener('click',()=>nav('home'));
+
+function showRecordSuccess(v,record){
+  if($('successVehicle')) $('successVehicle').textContent=`${v.name} • ${v.plate}`;
+  const cons=record.quantity ? `${Number(record.quantity).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l` : 'consumo no próximo registro';
+  if($('successDetails')) $('successDetails').textContent=`${Number(record.odometer).toLocaleString('pt-BR')} km • ${Number(record.liters).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L • ${cons}`;
+  $('successDialog')?.showModal();
+}
+$('successHomeBtn')?.addEventListener('click',()=>{ $('successDialog').close(); nav('home'); });
+$('successAgainBtn')?.addEventListener('click',()=>{
+  $('successDialog').close();
+  nav('record');
+});
+
 $('recordForm').addEventListener('submit',e=>{
   e.preventDefault();
   const v=getVehicle($('recordVehicle').value); if(!v) return showToast('Selecione um veículo.');
@@ -177,9 +313,12 @@ $('recordForm').addEventListener('submit',e=>{
     oil:Number($('recordOil').value), createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
   };
   state.records.push(record);
-  queueChange('record',record.id); e.target.reset(); state.currentVehicleId=v.id;
-  showToast(consumption===null?'Primeiro abastecimento salvo. O consumo será calculado no próximo.':'Abastecimento salvo com consumo calculado.');
-  renderHome(); prepRecord(v.id);
+  queueChange('record',record.id);
+  state.currentVehicleId=v.id;
+  renderHome();
+  showRecordSuccess(v,record);
+  e.target.reset();
+  prepRecord(v.id);
 });
 
 function renderVehicles(){
@@ -264,7 +403,7 @@ function updateSyncUI(){
   const authenticated=cloudAuthenticated();
   const auth=cloudAuthInfo();
   const badge=$('connectionBadge');
-  if(badge){ badge.classList.toggle('offline',!online); $('connectionText').textContent=online?'Online':'Offline'; }
+  if(badge){ badge.classList.toggle('offline',!online); $('connectionText').textContent=online?'Com internet':'Sem internet'; }
   if($('dataConnection')) $('dataConnection').textContent=online?'Online':'Offline';
   if($('dataPending')) $('dataPending').textContent=state.syncQueue.length.toLocaleString('pt-BR');
   if($('dataLastBackup')) $('dataLastBackup').textContent=fmtDateTime(state.meta.lastBackupAt);
@@ -289,7 +428,7 @@ function updateSyncUI(){
   }
 }
 function refreshAllViews(){
-  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||'');
+  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||'');
 }
 function exportBackup(){
   const backup={
@@ -449,7 +588,7 @@ $('cloudLogoutBtn')?.addEventListener('click',()=>{
   showToast('Conta da nuvem desconectada.');
 });
 
-$('dataBtn').addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); });
+$('dataBtn')?.addEventListener('click',()=>{ updateSyncUI(); $('dataDialog').showModal(); });
 $('closeDataDialog').addEventListener('click',()=>$('dataDialog').close());
 $('dataDialog').addEventListener('click',e=>{ if(e.target===$('dataDialog')) $('dataDialog').close(); });
 $('exportBackupBtn').addEventListener('click',exportBackup);
@@ -460,9 +599,9 @@ window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); 
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
-$('installBtn').addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
+$('installBtn')?.addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=11').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=12').catch(()=>{})); }
 
 load();
 updateSyncUI();
@@ -470,7 +609,7 @@ renderHome();
 renderVehicleOptions();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
-const initial=location.hash.replace('#',''); if(['home','record','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
+const initial=location.hash.replace('#',''); if(['home','record','admin','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
 
 // ===== Relatório em PDF por período =====
 function monthStartISO(){

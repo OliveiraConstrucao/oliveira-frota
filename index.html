@@ -29,113 +29,208 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
+    <header class="topbar simple-topbar">
       <div class="brand">
         <img src="assets/logo-oliveira.png" alt="Oliveira Construção" class="brand-logo" />
         <div>
           <h1>Oliveira Frota</h1>
-          <p>Controle de veículos</p>
+          <p>Abastecimento de veículos</p>
         </div>
       </div>
       <div class="top-actions">
-        <span id="connectionBadge" class="connection-badge" aria-live="polite"><span class="status-dot"></span><span id="connectionText">Online</span></span>
-        <button id="dataBtn" class="btn btn-ghost btn-compact" type="button">Dados</button>
-        <button id="installBtn" class="btn btn-ghost hidden" type="button">Instalar app</button>
+        <span id="connectionBadge" class="connection-badge" aria-live="polite">
+          <span class="status-dot"></span><span id="connectionText">Com internet</span>
+        </span>
       </div>
     </header>
 
-    <main id="mainContent" class="main-content">
+    <main id="mainContent" class="main-content simple-main">
       <section id="view-home" class="view active" data-view="home">
-        <div class="hero-card">
-          <div>
-            <span class="eyebrow">OLIVEIRA CONSTRUÇÃO</span>
-            <h2>Controle rápido da frota</h2>
-            <p>Registre as informações da ficha em poucos segundos.</p>
+        <div class="simple-home-card">
+          <img src="assets/icons/icon-192.png" alt="" class="simple-app-icon" />
+          <span class="eyebrow">OLIVEIRA FROTA</span>
+          <h2>O que você quer fazer?</h2>
+          <p>Para lançar um abastecimento, toque no botão abaixo.</p>
+
+          <button class="big-action-btn" data-nav="record" type="button">
+            <span class="big-action-icon">⛽</span>
+            <span class="big-action-copy">
+              <strong>REGISTRAR ABASTECIMENTO</strong>
+              <small>É rápido. O app faz as contas.</small>
+            </span>
+            <span class="big-action-arrow">›</span>
+          </button>
+
+          <div class="simple-day-summary">
+            <span>Hoje</span>
+            <strong id="simpleTodayCount">0 registros</strong>
           </div>
-          <button class="btn btn-primary btn-large" data-nav="record">+ Novo registro</button>
         </div>
 
-        <div class="stats-grid">
-          <article class="stat-card"><span>Veículos</span><strong id="statVehicles">0</strong></article>
-          <article class="stat-card"><span>Registros hoje</span><strong id="statToday">0</strong></article>
-          <article class="stat-card"><span>Trocas próximas</span><strong id="statOilSoon">0</strong></article>
-          <article class="stat-card"><span>Trocas vencidas</span><strong id="statOilOverdue">0</strong></article>
-        </div>
-
-        <div class="section-head">
-          <div>
-            <span class="eyebrow">SITUAÇÃO</span>
-            <h3>Troca de óleo</h3>
-          </div>
-          <button class="link-btn" data-nav="oil">Ver todos</button>
-        </div>
-        <div id="homeOilList" class="stack-list"></div>
+        <div id="simpleOilAlert" class="simple-alert hidden"></div>
       </section>
 
       <section id="view-record" class="view" data-view="record">
-        <div class="page-head">
-          <div><span class="eyebrow">REGISTRO</span><h2>Novo registro</h2></div>
+        <div class="wizard-shell">
+          <div class="wizard-top">
+            <button id="wizardExitBtn" class="wizard-exit" type="button" aria-label="Voltar ao início">←</button>
+            <div class="wizard-progress-wrap">
+              <span id="wizardProgressText">Etapa 1 de 5</span>
+              <div class="wizard-progress"><span id="wizardProgressBar"></span></div>
+            </div>
+          </div>
+
+          <form id="recordForm" class="wizard-card" autocomplete="off">
+            <select id="recordVehicle" class="hidden" required></select>
+            <input id="recordPlate" type="hidden" />
+            <input id="recordQuantity" type="hidden" />
+
+            <section class="record-step active" data-step="1">
+              <div class="wizard-question">
+                <span class="wizard-number">1</span>
+                <h2>Qual veículo?</h2>
+                <p>Toque no veículo que foi abastecido.</p>
+              </div>
+              <div id="simpleVehicleChoices" class="vehicle-choice-grid"></div>
+              <div id="noVehicleSimple" class="simple-empty hidden">
+                <strong>Nenhum veículo cadastrado.</strong>
+                <span>Peça para a responsável cadastrar o veículo na Administração.</span>
+              </div>
+            </section>
+
+            <section class="record-step" data-step="2">
+              <div class="wizard-question">
+                <span class="wizard-number">2</span>
+                <h2>Qual o KM do painel?</h2>
+                <p id="lastOdometerSimple">Digite a quilometragem que aparece no veículo.</p>
+              </div>
+              <label class="big-number-field">
+                <span>KM ATUAL</span>
+                <input id="recordOdometer" type="number" min="0" step="1" inputmode="numeric" required placeholder="84520" />
+                <small>Digite somente os números.</small>
+              </label>
+              <div id="recordWarning" class="warning hidden"></div>
+            </section>
+
+            <section class="record-step" data-step="3">
+              <div class="wizard-question">
+                <span class="wizard-number">3</span>
+                <h2>Quantos litros?</h2>
+                <p>Digite a quantidade abastecida.</p>
+              </div>
+              <label class="big-number-field">
+                <span>LITROS ABASTECIDOS</span>
+                <input id="recordLiters" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="45,5" />
+                <small>Pode usar vírgula ou ponto no teclado.</small>
+              </label>
+
+              <div class="auto-result-card">
+                <span>O APP CALCULA AUTOMATICAMENTE</span>
+                <strong id="simpleConsumptionValue">—</strong>
+                <small id="recordConsumptionHelp" class="field-help">Informe o KM e os litros.</small>
+              </div>
+            </section>
+
+            <section class="record-step" data-step="4">
+              <div class="wizard-question">
+                <span class="wizard-number">4</span>
+                <h2>Troca de óleo</h2>
+                <p>Confira a próxima quilometragem da troca.</p>
+              </div>
+
+              <label class="big-number-field">
+                <span>PRÓXIMA TROCA DE ÓLEO</span>
+                <input id="recordOil" type="number" min="0" step="1" inputmode="numeric" required placeholder="85000" />
+                <small id="oilSimpleHelp">Se já houver um valor salvo, ele aparece automaticamente.</small>
+              </label>
+
+              <label class="simple-date-field">
+                <span>Data do registro</span>
+                <input id="recordDate" type="date" required />
+              </label>
+            </section>
+
+            <section class="record-step" data-step="5">
+              <div class="wizard-question">
+                <span class="wizard-number">5</span>
+                <h2>Confira antes de salvar</h2>
+                <p>Se estiver tudo certo, toque em SALVAR.</p>
+              </div>
+
+              <div class="confirm-card">
+                <div><span>Veículo</span><strong id="confirmVehicle">—</strong></div>
+                <div><span>Placa</span><strong id="confirmPlate">—</strong></div>
+                <div><span>KM</span><strong id="confirmOdometer">—</strong></div>
+                <div><span>Litros</span><strong id="confirmLiters">—</strong></div>
+                <div><span>Consumo</span><strong id="confirmConsumption">—</strong></div>
+                <div><span>Troca de óleo</span><strong id="confirmOil">—</strong></div>
+                <div><span>Data</span><strong id="confirmDate">—</strong></div>
+              </div>
+            </section>
+
+            <div class="wizard-actions">
+              <button id="wizardBackBtn" class="btn wizard-secondary" type="button">← VOLTAR</button>
+              <button id="wizardNextBtn" class="btn btn-primary wizard-primary" type="button">CONTINUAR →</button>
+              <button id="wizardSaveBtn" class="btn btn-primary wizard-primary hidden" type="submit">✓ SALVAR REGISTRO</button>
+            </div>
+          </form>
         </div>
-        <form id="recordForm" class="card form-card" autocomplete="off">
-          <div class="form-grid two-cols">
-            <label class="field">
-              <span>Veículo</span>
-              <select id="recordVehicle" required></select>
-            </label>
-            <label class="field">
-              <span>Placa</span>
-              <input id="recordPlate" type="text" readonly placeholder="Preenchida automaticamente" />
-            </label>
-          </div>
-          <div class="form-grid two-cols">
-            <label class="field">
-              <span>Odômetro</span>
-              <input id="recordOdometer" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ex.: 84520" />
-            </label>
-            <label class="field">
-              <span>Litros abastecidos</span>
-              <input id="recordLiters" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="Ex.: 45,5" />
-            </label>
-          </div>
-          <div class="form-grid one-col">
-            <label class="field">
-              <span>Quant. por litro (km/l)</span>
-              <input id="recordQuantity" type="text" readonly placeholder="Calculado automaticamente" />
-              <small id="recordConsumptionHelp" class="field-help">No primeiro registro do veículo, o cálculo ficará sem referência anterior.</small>
-            </label>
-          </div>
-          <div class="form-grid two-cols">
-            <label class="field">
-              <span>Data</span>
-              <input id="recordDate" type="date" required />
-            </label>
-            <label class="field">
-              <span>Troca de óleo</span>
-              <input id="recordOil" type="number" min="0" step="1" inputmode="numeric" required placeholder="Ex.: 85000" />
-            </label>
-          </div>
-          <div id="recordWarning" class="warning hidden"></div>
-          <button class="btn btn-primary btn-block" type="submit">Salvar registro</button>
-        </form>
+      </section>
+
+      <section id="view-admin" class="view" data-view="admin">
+        <div class="admin-intro">
+          <span class="eyebrow">ADMINISTRAÇÃO</span>
+          <h2>Área da responsável</h2>
+          <p>Cadastros, consultas, relatórios e configurações ficam aqui.</p>
+        </div>
+
+        <div class="admin-menu-grid">
+          <button class="admin-menu-card" data-nav="vehicles" type="button">
+            <span class="admin-menu-icon">🚚</span>
+            <strong>Veículos</strong>
+            <small>Cadastrar e consultar</small>
+          </button>
+          <button class="admin-menu-card" data-nav="history" type="button">
+            <span class="admin-menu-icon">📋</span>
+            <strong>Histórico e PDF</strong>
+            <small>Consultar e salvar relatórios</small>
+          </button>
+          <button class="admin-menu-card" data-nav="oil" type="button">
+            <span class="admin-menu-icon">🛢️</span>
+            <strong>Troca de óleo</strong>
+            <small>Acompanhar os veículos</small>
+          </button>
+          <button id="dataBtn" class="admin-menu-card" type="button">
+            <span class="admin-menu-icon">☁️</span>
+            <strong>Dados e nuvem</strong>
+            <small>Backup e sincronização</small>
+          </button>
+        </div>
+
+        <div class="admin-install-row">
+          <button id="installBtn" class="btn btn-secondary hidden" type="button">Instalar aplicativo neste aparelho</button>
+        </div>
       </section>
 
       <section id="view-vehicles" class="view" data-view="vehicles">
-        <div class="page-head split">
-          <div><span class="eyebrow">CADASTRO</span><h2>Veículos</h2></div>
-          <button id="newVehicleBtn" class="btn btn-primary">+ Veículo</button>
+        <div class="page-head split admin-subhead">
+          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+          <button id="newVehicleBtn" class="btn btn-primary" type="button">+ Cadastrar veículo</button>
         </div>
+        <div class="page-title-simple"><span class="eyebrow">CADASTRO</span><h2>Veículos</h2></div>
         <div id="vehiclesList" class="cards-grid"></div>
       </section>
 
       <section id="view-history" class="view" data-view="history">
-        <div class="page-head split">
-          <div><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
-          <button id="openPdfDialog" class="btn btn-primary" type="button">Gerar PDF</button>
+        <div class="page-head split admin-subhead">
+          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+          <button id="openPdfDialog" class="btn btn-primary" type="button">Salvar período em PDF</button>
         </div>
+        <div class="page-title-simple"><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
         <div class="card filters-card">
           <div class="form-grid three-cols">
             <label class="field"><span>Veículo / placa</span><input id="historySearch" type="search" placeholder="Pesquisar" /></label>
@@ -147,26 +242,26 @@
       </section>
 
       <section id="view-oil" class="view" data-view="oil">
-        <div class="page-head">
-          <div><span class="eyebrow">MANUTENÇÃO</span><h2>Troca de óleo</h2></div>
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
         </div>
+        <div class="page-title-simple"><span class="eyebrow">MANUTENÇÃO</span><h2>Troca de óleo</h2></div>
         <div id="oilList" class="stack-list"></div>
       </section>
 
       <section id="view-vehicle-detail" class="view" data-view="vehicle-detail">
         <div class="page-head split">
-          <button class="btn btn-secondary" data-nav="vehicles">← Voltar</button>
-          <button id="detailNewRecord" class="btn btn-primary">+ Novo registro</button>
+          <button class="btn btn-secondary" data-nav="vehicles">← Veículos</button>
+          <button id="detailNewRecord" class="btn btn-primary">Registrar abastecimento</button>
         </div>
         <div id="vehicleDetail"></div>
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Navegação principal">
+    <nav class="bottom-nav simple-bottom-nav" aria-label="Navegação principal">
       <button class="nav-item active" data-nav="home"><span>⌂</span><small>Início</small></button>
-      <button class="nav-item" data-nav="record"><span>＋</span><small>Registrar</small></button>
-      <button class="nav-item" data-nav="vehicles"><span>▣</span><small>Veículos</small></button>
-      <button class="nav-item" data-nav="history"><span>≡</span><small>Histórico</small></button>
+      <button class="nav-item nav-main-action" data-nav="record"><span>⛽</span><small>Abastecer</small></button>
+      <button class="nav-item" data-nav="admin"><span>⚙</span><small>Administração</small></button>
     </nav>
   </div>
 
@@ -266,9 +361,23 @@
     </div>
   </dialog>
 
+  <dialog id="successDialog" class="dialog success-dialog">
+    <div class="dialog-card success-dialog-card">
+      <div class="success-check">✓</div>
+      <h2>REGISTRO SALVO</h2>
+      <p>O abastecimento foi registrado com sucesso.</p>
+      <div class="success-summary">
+        <strong id="successVehicle">—</strong>
+        <span id="successDetails">—</span>
+      </div>
+      <button id="successAgainBtn" class="btn btn-primary btn-block" type="button">REGISTRAR OUTRO</button>
+      <button id="successHomeBtn" class="btn btn-secondary btn-block success-home-btn" type="button">VOLTAR AO INÍCIO</button>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="firebase-config.js?v=11" defer></script>
-  <script src="cloud-sync.js?v=11" defer></script>
-  <script src="app.js?v=11" defer></script>
+  <script src="firebase-config.js?v=12" defer></script>
+  <script src="cloud-sync.js?v=12" defer></script>
+  <script src="app.js?v=12" defer></script>
 </body>
 </html>
