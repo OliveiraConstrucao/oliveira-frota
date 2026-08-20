@@ -1067,13 +1067,101 @@ $('exportBackupBtn').addEventListener('click',exportBackup);
 $('importBackupBtn').addEventListener('click',()=>$('importBackupFile').click());
 $('importBackupFile').addEventListener('change',async e=>{ const file=e.target.files?.[0]; if(file) await importBackup(file); e.target.value=''; });
 $('syncNowBtn').addEventListener('click',()=>attemptCloudSync(true));
+
+async function clearTestData(){
+  if(!navigator.onLine){
+    showToast('Conecte o aparelho à internet antes de limpar os dados de teste.');
+    return;
+  }
+  if(!cloudConfigured() || !cloudAuthenticated()){
+    showToast('Conecte o Firebase antes de limpar os dados de teste.');
+    return;
+  }
+
+  // Primeiro traz para este aparelho qualquer dado de teste que esteja na nuvem.
+  const synced=await attemptCloudSync(false);
+  if(!synced){
+    showToast('Não foi possível conferir a nuvem. Tente sincronizar novamente.');
+    return;
+  }
+
+  const vehicleCount=managedVehicles().length;
+  const recordCount=correctionRecords().length;
+  const oilCount=state.oilChanges.filter(o=>!o.deletedAt).length;
+  const total=vehicleCount+recordCount+oilCount;
+
+  if(total===0){
+    showToast('Não há dados de teste para limpar.');
+    return;
+  }
+
+  const first=confirm(
+    `ATENÇÃO\n\nSerão removidos da operação:\n`+
+    `• ${vehicleCount} veículo(s)\n`+
+    `• ${recordCount} abastecimento(s)\n`+
+    `• ${oilCount} troca(s) de óleo\n\n`+
+    `O login, Firebase e configurações do app serão preservados.\n\n`+
+    `Antes de continuar, é recomendável ter um backup. Deseja prosseguir?`
+  );
+  if(!first) return;
+
+  const typed=prompt('Para confirmar a limpeza dos dados de teste, digite exatamente: LIMPAR');
+  if(String(typed||'').trim().toUpperCase()!=='LIMPAR'){
+    showToast('Limpeza cancelada.');
+    return;
+  }
+
+  // Faz uma cópia local imediatamente antes da limpeza.
+  exportBackup();
+
+  const now=new Date().toISOString();
+  const enqueue=(entityType,obj)=>{
+    state.syncQueue=state.syncQueue.filter(q=>!(q.entityType===entityType && q.entityId===obj.id));
+    state.syncQueue.push({id:uuid(),entityType,entityId:obj.id,updatedAt:now});
+  };
+
+  for(const v of state.vehicles){
+    if(v.deletedAt) continue;
+    v.deletedAt=now;
+    v.updatedAt=now;
+    enqueue('vehicle',v);
+  }
+  for(const r of state.records){
+    if(r.deletedAt) continue;
+    r.deletedAt=now;
+    r.updatedAt=now;
+    enqueue('record',r);
+  }
+  for(const o of state.oilChanges){
+    if(o.deletedAt) continue;
+    o.deletedAt=now;
+    o.updatedAt=now;
+    enqueue('oilChange',o);
+  }
+
+  state.currentVehicleId=null;
+  state.meta.lastLocalChange=now;
+  state.meta.testDataClearedAt=now;
+  save();
+  refreshAllViews();
+  updateSyncUI();
+
+  const cloudOk=await attemptCloudSync(false);
+  if(cloudOk){
+    showToast('Dados de teste limpos. O app está pronto para os veículos reais.');
+  }else{
+    showToast('Dados limpos neste aparelho. Há alterações pendentes para sincronizar.');
+  }
+}
+
+$('clearTestDataBtn')?.addEventListener('click',clearTestData);
 window.addEventListener('online',()=>{ updateSyncUI(); attemptCloudSync(false); showToast('Internet disponível novamente.'); });
 window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline ativado.'); });
 
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
 $('installBtn')?.addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=14').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=15').catch(()=>{})); }
 
 load();
 updateSyncUI();
