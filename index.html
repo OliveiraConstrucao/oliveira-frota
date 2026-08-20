@@ -29,7 +29,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <div class="app-shell">
@@ -204,7 +204,12 @@
           <button class="admin-menu-card" data-nav="vehicles" type="button">
             <span class="admin-menu-icon">🚚</span>
             <strong>Veículos</strong>
-            <small>Cadastrar e consultar veículos</small>
+            <small>Editar, arquivar e excluir</small>
+          </button>
+          <button class="admin-menu-card" data-nav="corrections" type="button">
+            <span class="admin-menu-icon">✏️</span>
+            <strong>Corrigir lançamentos</strong>
+            <small>Editar, cancelar ou excluir</small>
           </button>
           <button id="dataBtn" class="admin-menu-card" type="button">
             <span class="admin-menu-icon">☁️</span>
@@ -223,8 +228,36 @@
           <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
           <button id="newVehicleBtn" class="btn btn-primary" type="button">+ Cadastrar veículo</button>
         </div>
-        <div class="page-title-simple"><span class="eyebrow">CADASTRO</span><h2>Veículos</h2></div>
+        <div class="page-title-simple"><span class="eyebrow">CADASTRO</span><h2>Veículos</h2><p class="page-subtext">Edite dados, ajuste o odômetro atual, arquive ou exclua veículos.</p></div>
         <div id="vehiclesList" class="cards-grid"></div>
+      </section>
+
+      <section id="view-corrections" class="view" data-view="corrections">
+        <div class="page-head admin-subhead">
+          <button class="btn btn-secondary" data-nav="admin" type="button">← Administração</button>
+        </div>
+        <div class="page-title-simple">
+          <span class="eyebrow">CORREÇÕES</span>
+          <h2>Lançamentos</h2>
+          <p class="page-subtext">Use esta área somente para corrigir registros já salvos.</p>
+        </div>
+
+        <div class="card filters-card">
+          <div class="form-grid three-cols">
+            <label class="field"><span>Veículo / placa</span><input id="correctionSearch" type="search" placeholder="Pesquisar" /></label>
+            <label class="field"><span>Data</span><input id="correctionDate" type="date" /></label>
+            <label class="field"><span>Situação</span>
+              <select id="correctionStatus">
+                <option value="active">Ativos</option>
+                <option value="cancelled">Cancelados</option>
+                <option value="all">Todos</option>
+              </select>
+            </label>
+          </div>
+          <button id="clearCorrectionFilters" type="button" class="btn btn-secondary">Limpar filtros</button>
+        </div>
+
+        <div id="correctionsList" class="stack-list corrections-list"></div>
       </section>
 
       <section id="view-history" class="view" data-view="history">
@@ -362,14 +395,48 @@
   </div>
 
   <dialog id="vehicleDialog" class="dialog">
-    <form id="vehicleForm" method="dialog" class="dialog-card">
-      <div class="dialog-head"><h3>Novo veículo</h3><button type="button" class="icon-btn" id="closeVehicleDialog">×</button></div>
+    <form id="vehicleForm" class="dialog-card" autocomplete="off">
+      <input id="vehicleEditId" type="hidden" />
+      <div class="dialog-head">
+        <div><span class="eyebrow">VEÍCULO</span><h3 id="vehicleDialogTitle">Novo veículo</h3></div>
+        <button type="button" class="icon-btn" id="closeVehicleDialog">×</button>
+      </div>
       <label class="field"><span>Veículo</span><input id="vehicleName" type="text" required placeholder="Ex.: Hilux" /></label>
       <label class="field"><span>Placa</span><input id="vehiclePlate" type="text" required maxlength="8" placeholder="ABC1D23" /></label>
-      <button type="submit" class="btn btn-primary btn-block">Salvar veículo</button>
+      <label class="field">
+        <span>Odômetro atual</span>
+        <input id="vehicleOdometer" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 84520" />
+        <small class="field-note">Esse campo ajusta o odômetro atual do veículo. Para corrigir o KM de um abastecimento antigo, use “Corrigir lançamentos”.</small>
+      </label>
+      <button id="vehicleSaveBtn" type="submit" class="btn btn-primary btn-block">Salvar veículo</button>
     </form>
   </dialog>
 
+
+  <dialog id="recordEditDialog" class="dialog">
+    <form id="recordEditForm" class="dialog-card" autocomplete="off">
+      <input id="recordEditId" type="hidden" />
+      <div class="dialog-head">
+        <div><span class="eyebrow">CORREÇÃO</span><h3>Editar lançamento</h3></div>
+        <button type="button" class="icon-btn" id="closeRecordEditDialog" aria-label="Fechar">×</button>
+      </div>
+
+      <label class="field"><span>Veículo</span><select id="recordEditVehicle" required></select></label>
+      <div class="form-grid two-cols">
+        <label class="field"><span>Data</span><input id="recordEditDate" type="date" required /></label>
+        <label class="field"><span>Odômetro</span><input id="recordEditOdometer" type="number" min="0" step="1" inputmode="numeric" required /></label>
+      </div>
+      <label class="field"><span>Litros abastecidos</span><input id="recordEditLiters" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+
+      <div class="edit-calculation-box">
+        <span>Consumo após a correção</span>
+        <strong id="recordEditConsumption">Será recalculado ao salvar</strong>
+      </div>
+
+      <p class="dialog-note">Ao salvar, o app recalcula automaticamente o km/l deste veículo, inclusive os registros seguintes que forem afetados.</p>
+      <button type="submit" class="btn btn-primary btn-block">Salvar correção</button>
+    </form>
+  </dialog>
 
   <dialog id="pdfDialog" class="dialog">
     <form id="pdfForm" class="dialog-card" autocomplete="off">
@@ -488,6 +555,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=13" defer></script>
+  <script src="app.js?v=14" defer></script>
 </body>
 </html>

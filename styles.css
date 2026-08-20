@@ -289,3 +289,32 @@ button{cursor:pointer}
   .oil-main-card{padding:20px 16px}
   .menu-feature-card{min-height:110px}
 }
+
+
+/* =========================================================
+   V14 — ADMINISTRAÇÃO: EDIÇÃO E CORREÇÕES
+   ========================================================= */
+.page-subtext{margin:5px 0 0;color:var(--muted);font-size:13px}
+.field-note{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:6px}
+.vehicle-admin-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}
+.vehicle-admin-actions .btn{padding:10px 8px;font-size:11px}
+.btn-danger-soft{background:#fff0ee;color:#8f2e2f;border:1px solid #e5b8b3}
+.vehicle-archived{opacity:.78;background:#fafafa}
+.badge.archived{background:#ededed;color:#555}
+.badge.cancelled{background:#f2e7e7;color:#8f2e2f}
+.correction-card{align-items:center}
+.correction-cancelled{opacity:.72}
+.correction-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.correction-actions .btn{padding:9px 10px;font-size:11px}
+.edit-calculation-box{background:var(--green-soft);border:1px solid #bddfc7;border-radius:14px;padding:12px 14px;margin:6px 0 12px}
+.edit-calculation-box span{display:block;font-size:10px;font-weight:900;letter-spacing:.06em;color:var(--green);text-transform:uppercase}
+.edit-calculation-box strong{display:block;margin-top:4px;font-size:17px;color:var(--green)}
+.corrections-list{margin-top:14px}
+
+@media(max-width:620px){
+  .vehicle-admin-actions{grid-template-columns:1fr 1fr}
+  .vehicle-admin-actions .btn:last-child{grid-column:1/-1}
+  .correction-card{display:block}
+  .correction-actions{justify-content:stretch;margin-top:12px}
+  .correction-actions .btn{flex:1}
+}

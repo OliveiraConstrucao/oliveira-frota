@@ -45,9 +45,13 @@ function queueChange(entityType, entityId){
 }
 
 function getVehicle(id){ return state.vehicles.find(v => v.id === id); }
-function vehicleRecords(id){ return state.records.filter(r => r.vehicleId === id).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
+function managedVehicles(){ return state.vehicles.filter(v=>!v.deletedAt); }
+function activeVehicles(){ return state.vehicles.filter(v=>!v.deletedAt && !v.archivedAt); }
+function visibleRecords(){ return state.records.filter(r=>!r.deletedAt && !r.cancelledAt); }
+function correctionRecords(){ return state.records.filter(r=>!r.deletedAt); }
+function vehicleRecords(id){ return visibleRecords().filter(r => r.vehicleId === id).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
 function lastRecord(id){ return vehicleRecords(id)[0] || null; }
-function vehicleOilChanges(id){ return state.oilChanges.filter(r => r.vehicleId === id).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
+function vehicleOilChanges(id){ return state.oilChanges.filter(r => r.vehicleId === id && !r.deletedAt).sort((a,b) => (b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))); }
 function latestOilChange(id){ return vehicleOilChanges(id)[0] || null; }
 function oilReference(id){
   const change=latestOilChange(id);
@@ -61,10 +65,37 @@ function oilReference(id){
   return null;
 }
 function currentVehicleOdometer(id){
+  const v=getVehicle(id);
+  const candidates=[];
   const fuel=lastRecord(id);
   const oil=latestOilChange(id);
-  const vals=[Number(fuel?.odometer),Number(oil?.odometer)].filter(Number.isFinite);
-  return vals.length ? Math.max(...vals) : null;
+  if(fuel && Number.isFinite(Number(fuel.odometer))) candidates.push({value:Number(fuel.odometer),at:fuel.createdAt||`${fuel.date}T12:00:00`});
+  if(oil && Number.isFinite(Number(oil.odometer))) candidates.push({value:Number(oil.odometer),at:oil.createdAt||`${oil.date}T12:00:00`});
+  if(v && Number.isFinite(Number(v.manualOdometer))) candidates.push({value:Number(v.manualOdometer),at:v.manualOdometerAt||v.updatedAt||v.createdAt||''});
+  if(!candidates.length) return null;
+  candidates.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  return candidates[0].value;
+}
+function recalcVehicleConsumptions(vehicleId){
+  const list=visibleRecords()
+    .filter(r=>r.vehicleId===vehicleId)
+    .sort((a,b)=>(a.date+(a.createdAt||'')).localeCompare(b.date+(b.createdAt||'')));
+  let prev=null;
+  const now=new Date().toISOString();
+  for(const r of list){
+    let nextQuantity='';
+    if(prev){
+      const distance=Number(r.odometer)-Number(prev.odometer);
+      const liters=Number(r.liters);
+      if(distance>0 && liters>0) nextQuantity=(distance/liters).toFixed(2);
+    }
+    if(String(r.quantity??'')!==String(nextQuantity)){
+      r.quantity=nextQuantity;
+      r.updatedAt=now;
+      queueChange('record',r.id);
+    }
+    prev=r;
+  }
 }
 function oilStatus(v){
   const ref=oilReference(v.id);
@@ -107,6 +138,7 @@ function nav(view){
   if(view==='oil-record') prepOilRecord();
   if(view==='vehicles') renderVehicles();
   if(view==='history') renderHistory();
+  if(view==='corrections') renderCorrections();
   if(view==='oil') renderOil();
   if(view==='home') renderHome();
   if(view==='admin' || view==='menu') updateSyncUI();
@@ -119,9 +151,9 @@ document.addEventListener('click', e=>{
 });
 
 function renderHome(){
-  const todayCount=state.records.filter(r=>r.date===todayISO()).length;
+  const todayCount=visibleRecords().filter(r=>r.date===todayISO()).length;
   if($('simpleTodayCount')) $('simpleTodayCount').textContent=`${todayCount} ${todayCount===1?'registro':'registros'}`;
-  const attention=state.vehicles
+  const attention=activeVehicles()
     .map(v=>({v,s:oilStatus(v)}))
     .filter(x=>['soon','overdue'].includes(x.s.type));
   const alert=$('simpleOilAlert');
@@ -141,7 +173,7 @@ function renderHome(){
 function renderVehicleOptions(selected){
   const sel=$('recordVehicle');
   if(!sel) return;
-  sel.innerHTML='<option value="">Selecione</option>'+state.vehicles
+  sel.innerHTML='<option value="">Selecione</option>'+activeVehicles()
     .slice()
     .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
     .map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
@@ -152,7 +184,7 @@ function renderSimpleVehicleChoices(selected=''){
   const box=$('simpleVehicleChoices');
   const empty=$('noVehicleSimple');
   if(!box) return;
-  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const list=activeVehicles().slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   box.innerHTML=list.map(v=>`
     <button type="button" class="vehicle-choice ${selected===v.id?'selected':''}" data-vehicle-id="${v.id}">
       <span class="vehicle-choice-icon">🚚</span>
@@ -343,24 +375,36 @@ $('recordForm').addEventListener('submit',e=>{
 });
 
 function renderVehicles(){
-  $('vehiclesList').innerHTML=state.vehicles.length ? state.vehicles.map(v=>{
-    const r=lastRecord(v.id), s=oilStatus(v);
-    return `<article class="card vehicle-card">
-      <div class="vehicle-card-head"><div><h3>${escapeHTML(v.name)}</h3><div class="plate">${escapeHTML(v.plate)}</div></div><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div>
-      <div class="card-row"><span class="muted">Último odômetro</span><strong>${r?fmtKm(r.odometer):'—'}</strong></div>
+  const list=managedVehicles().slice().sort((a,b)=>{
+    if(Boolean(a.archivedAt)!==Boolean(b.archivedAt)) return a.archivedAt?1:-1;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+  $('vehiclesList').innerHTML=list.length ? list.map(v=>{
+    const r=lastRecord(v.id), s=oilStatus(v), current=currentVehicleOdometer(v.id);
+    const status=v.archivedAt?'<span class="badge archived">Arquivado</span>':`<span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span>`;
+    return `<article class="card vehicle-card ${v.archivedAt?'vehicle-archived':''}">
+      <div class="vehicle-card-head"><div><h3>${escapeHTML(v.name)}</h3><div class="plate">${escapeHTML(v.plate)}</div></div>${status}</div>
+      <div class="card-row"><span class="muted">Odômetro atual</span><strong>${current===null?'—':fmtKm(current)}</strong></div>
       <div class="card-row"><span class="muted">Próxima troca de óleo</span><strong>${s.next?fmtKm(s.next):'—'}</strong></div>
-      <button class="btn btn-secondary btn-block" onclick="openVehicleDetail('${v.id}')">Abrir ficha</button>
+      <div class="vehicle-admin-actions">
+        <button class="btn btn-secondary" type="button" data-edit-vehicle="${v.id}">Editar</button>
+        <button class="btn btn-secondary" type="button" data-archive-vehicle="${v.id}">${v.archivedAt?'Reativar':'Arquivar'}</button>
+        <button class="btn btn-danger-soft" type="button" data-delete-vehicle="${v.id}">Excluir</button>
+      </div>
+      <button class="btn btn-secondary btn-block" type="button" onclick="openVehicleDetail('${v.id}')">Abrir ficha</button>
     </article>`;
   }).join('') : '<div class="empty">Nenhum veículo cadastrado.</div>';
 }
 
 window.openVehicleDetail=(id)=>{
-  state.currentVehicleId=id; const v=getVehicle(id), r=lastRecord(id), s=oilStatus(v), recs=vehicleRecords(id).slice(0,5);
+  state.currentVehicleId=id; const v=getVehicle(id);
+  if(!v || v.deletedAt) return nav('vehicles');
+  const r=lastRecord(id), s=oilStatus(v), recs=vehicleRecords(id).slice(0,5), current=currentVehicleOdometer(id);
   $('vehicleDetail').innerHTML=`<article class="card detail-card">
-    <div class="detail-top"><div><span class="eyebrow">VEÍCULO</span><h2>${escapeHTML(v.name)}</h2><div class="plate">${escapeHTML(v.plate)}</div></div><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div>
+    <div class="detail-top"><div><span class="eyebrow">VEÍCULO</span><h2>${escapeHTML(v.name)}</h2><div class="plate">${escapeHTML(v.plate)}</div></div>${v.archivedAt?'<span class="badge archived">Arquivado</span>':`<span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span>`}</div>
     <div class="detail-grid">
-      <div class="detail-box"><span>Último odômetro</span><strong>${r?fmtKm(r.odometer):'—'}</strong></div>
-      <div class="detail-box"><span>Litros abastecidos</span><strong>${r?fmtLiters(r.liters):'—'}</strong></div>
+      <div class="detail-box"><span>Odômetro atual</span><strong>${current===null?'—':fmtKm(current)}</strong></div>
+      <div class="detail-box"><span>Último abastecimento</span><strong>${r?fmtLiters(r.liters):'—'}</strong></div>
       <div class="detail-box"><span>Quant. por litro</span><strong>${r?escapeHTML(fmtConsumption(r.quantity)):'—'}</strong></div>
       <div class="detail-box"><span>Última data</span><strong>${r?fmtDate(r.date):'—'}</strong></div>
       <div class="detail-box"><span>Próxima troca de óleo</span><strong>${s.next?fmtKm(s.next):'—'}</strong></div>
@@ -370,17 +414,123 @@ window.openVehicleDetail=(id)=>{
   <div class="stack-list">${recs.length?recs.map(historyCard).join(''):'<div class="empty">Nenhum registro para este veículo.</div>'}</div>`;
   nav('vehicle-detail');
 }
-$('detailNewRecord').addEventListener('click',()=>{ const id=state.currentVehicleId; nav('record'); prepRecord(id); });
+$('detailNewRecord').addEventListener('click',()=>{
+  const id=state.currentVehicleId, v=getVehicle(id);
+  if(v?.archivedAt) return showToast('Reative o veículo antes de lançar abastecimento.');
+  nav('record'); prepRecord(id);
+});
 
-$('newVehicleBtn').addEventListener('click',()=>$('vehicleDialog').showModal());
+function openNewVehicleDialog(){
+  $('vehicleForm').reset();
+  $('vehicleEditId').value='';
+  $('vehicleDialogTitle').textContent='Novo veículo';
+  $('vehicleSaveBtn').textContent='Salvar veículo';
+  $('vehicleDialog').showModal();
+}
+function openEditVehicleDialog(id){
+  const v=getVehicle(id);
+  if(!v || v.deletedAt) return;
+  $('vehicleEditId').value=v.id;
+  $('vehicleName').value=v.name||'';
+  $('vehiclePlate').value=v.plate||'';
+  const current=currentVehicleOdometer(v.id);
+  $('vehicleOdometer').value=current===null?'':current;
+  $('vehicleDialogTitle').textContent='Editar veículo';
+  $('vehicleSaveBtn').textContent='Salvar alterações';
+  $('vehicleDialog').showModal();
+}
+$('newVehicleBtn').addEventListener('click',openNewVehicleDialog);
 $('closeVehicleDialog').addEventListener('click',()=>$('vehicleDialog').close());
+$('vehicleDialog').addEventListener('click',e=>{ if(e.target===$('vehicleDialog')) $('vehicleDialog').close(); });
 $('vehicleForm').addEventListener('submit',e=>{
-  e.preventDefault(); const name=$('vehicleName').value.trim(), plate=$('vehiclePlate').value.trim().toUpperCase();
-  if(state.vehicles.some(v=>v.plate.toUpperCase()===plate)) return showToast('Já existe um veículo com essa placa.');
+  e.preventDefault();
+  const id=$('vehicleEditId').value;
+  const name=$('vehicleName').value.trim();
+  const plate=$('vehiclePlate').value.trim().toUpperCase();
+  const odoRaw=$('vehicleOdometer').value;
+  if(!name || !plate) return showToast('Informe veículo e placa.');
+  if(managedVehicles().some(v=>v.id!==id && String(v.plate||'').toUpperCase()===plate)) return showToast('Já existe um veículo com essa placa.');
   const now=new Date().toISOString();
-  const vehicle={id:uuid(),name,plate,createdAt:now,updatedAt:now}; state.vehicles.push(vehicle); queueChange('vehicle',vehicle.id); $('vehicleDialog').close(); e.target.reset(); renderVehicles(); renderHome(); showToast('Veículo cadastrado.');
+
+  if(id){
+    const v=getVehicle(id);
+    if(!v || v.deletedAt) return;
+    const oldName=v.name, oldPlate=v.plate;
+    v.name=name; v.plate=plate; v.updatedAt=now;
+    if(odoRaw!==''){
+      const odo=Number(odoRaw);
+      if(!Number.isFinite(odo) || odo<0) return showToast('Confira o odômetro.');
+      v.manualOdometer=odo;
+      v.manualOdometerAt=now;
+    }
+    queueChange('vehicle',v.id);
+
+    if(oldName!==name || oldPlate!==plate){
+      for(const r of state.records.filter(r=>r.vehicleId===v.id && !r.deletedAt)){
+        r.vehicle=name; r.plate=plate; r.updatedAt=now; queueChange('record',r.id);
+      }
+      for(const o of state.oilChanges.filter(o=>o.vehicleId===v.id && !o.deletedAt)){
+        o.vehicle=name; o.plate=plate; o.updatedAt=now; queueChange('oilChange',o.id);
+      }
+    }
+    showToast('Veículo atualizado.');
+  }else{
+    const vehicle={id:uuid(),name,plate,createdAt:now,updatedAt:now};
+    if(odoRaw!==''){
+      const odo=Number(odoRaw);
+      if(!Number.isFinite(odo) || odo<0) return showToast('Confira o odômetro.');
+      vehicle.manualOdometer=odo;
+      vehicle.manualOdometerAt=now;
+    }
+    state.vehicles.push(vehicle);
+    queueChange('vehicle',vehicle.id);
+    showToast('Veículo cadastrado.');
+  }
+  $('vehicleDialog').close();
+  e.target.reset();
+  refreshAllViews();
 });
 $('vehiclePlate').addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
+
+document.addEventListener('click',e=>{
+  const edit=e.target.closest('[data-edit-vehicle]');
+  if(edit){ openEditVehicleDialog(edit.dataset.editVehicle); return; }
+
+  const archive=e.target.closest('[data-archive-vehicle]');
+  if(archive){
+    const v=getVehicle(archive.dataset.archiveVehicle);
+    if(!v || v.deletedAt) return;
+    const now=new Date().toISOString();
+    if(v.archivedAt){
+      v.archivedAt=null;
+      v.updatedAt=now;
+      queueChange('vehicle',v.id);
+      showToast('Veículo reativado.');
+    }else{
+      if(!confirm(`Arquivar ${v.name} (${v.plate})? Ele deixará de aparecer nos lançamentos, mas o histórico será preservado.`)) return;
+      v.archivedAt=now;
+      v.updatedAt=now;
+      queueChange('vehicle',v.id);
+      showToast('Veículo arquivado.');
+    }
+    refreshAllViews();
+    return;
+  }
+
+  const del=e.target.closest('[data-delete-vehicle]');
+  if(del){
+    const v=getVehicle(del.dataset.deleteVehicle);
+    if(!v || v.deletedAt) return;
+    const fuelCount=correctionRecords().filter(r=>r.vehicleId===v.id).length;
+    const oilCount=state.oilChanges.filter(o=>o.vehicleId===v.id && !o.deletedAt).length;
+    const msg=`Excluir ${v.name} (${v.plate}) da frota?\\n\\nExistem ${fuelCount} lançamento(s) de abastecimento e ${oilCount} troca(s) de óleo vinculados. Esses históricos serão preservados, mas o veículo não poderá mais ser usado em novos lançamentos.`;
+    if(!confirm(msg)) return;
+    const now=new Date().toISOString();
+    v.deletedAt=now; v.updatedAt=now; queueChange('vehicle',v.id);
+    refreshAllViews();
+    showToast('Veículo excluído da frota.');
+  }
+});
 
 function historyCard(r){
   return `<article class="list-card">
@@ -395,11 +545,171 @@ function historyCard(r){
 }
 function renderHistory(){
   const q=$('historySearch').value.trim().toLowerCase(), d=$('historyDate').value;
-  const list=[...state.records].sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).filter(r=>(!q || `${r.vehicle} ${r.plate}`.toLowerCase().includes(q)) && (!d || r.date===d));
+  const list=visibleRecords().slice().sort((a,b)=>(b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||''))).filter(r=>(!q || `${r.vehicle} ${r.plate}`.toLowerCase().includes(q)) && (!d || r.date===d));
   $('historyList').innerHTML=list.length?list.map(historyCard).join(''):'<div class="empty">Nenhum registro encontrado.</div>';
 }
 $('historySearch').addEventListener('input',renderHistory); $('historyDate').addEventListener('change',renderHistory);
 $('clearFilters').addEventListener('click',()=>{$('historySearch').value='';$('historyDate').value='';renderHistory();});
+
+
+function correctionCard(r){
+  const cancelled=Boolean(r.cancelledAt);
+  return `<article class="list-card correction-card ${cancelled?'correction-cancelled':''}">
+    <div class="list-card-main">
+      <h4>${escapeHTML(r.vehicle)} <span class="plate">${escapeHTML(r.plate)}</span></h4>
+      <p>${fmtDate(r.date)} • ${fmtKm(r.odometer)} • ${fmtLiters(r.liters)} • ${escapeHTML(fmtConsumption(r.quantity))}</p>
+      ${cancelled?'<span class="badge cancelled">Cancelado</span>':''}
+    </div>
+    <div class="correction-actions">
+      <button class="btn btn-secondary" type="button" data-edit-record="${r.id}">Editar</button>
+      <button class="btn btn-secondary" type="button" data-toggle-cancel-record="${r.id}">${cancelled?'Reativar':'Cancelar'}</button>
+      <button class="btn btn-danger-soft" type="button" data-delete-record="${r.id}">Excluir</button>
+    </div>
+  </article>`;
+}
+function renderCorrections(){
+  const q=($('correctionSearch')?.value||'').trim().toLowerCase();
+  const d=$('correctionDate')?.value||'';
+  const status=$('correctionStatus')?.value||'active';
+  const list=correctionRecords()
+    .slice()
+    .sort((a,b)=>(b.date+(b.createdAt||'')).localeCompare(a.date+(a.createdAt||'')))
+    .filter(r=>{
+      if(q && !`${r.vehicle} ${r.plate}`.toLowerCase().includes(q)) return false;
+      if(d && r.date!==d) return false;
+      if(status==='active' && r.cancelledAt) return false;
+      if(status==='cancelled' && !r.cancelledAt) return false;
+      return true;
+    });
+  if($('correctionsList')) $('correctionsList').innerHTML=list.length?list.map(correctionCard).join(''):'<div class="empty">Nenhum lançamento encontrado.</div>';
+}
+function renderRecordEditVehicleOptions(selected=''){
+  const sel=$('recordEditVehicle');
+  if(!sel) return;
+  sel.innerHTML=managedVehicles()
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+    .map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}${v.archivedAt?' (arquivado)':''}</option>`).join('');
+}
+function openRecordEditDialog(id){
+  const r=state.records.find(x=>x.id===id && !x.deletedAt);
+  if(!r) return;
+  renderRecordEditVehicleOptions(r.vehicleId);
+  $('recordEditId').value=r.id;
+  $('recordEditVehicle').value=r.vehicleId;
+  $('recordEditDate').value=r.date;
+  $('recordEditOdometer').value=r.odometer;
+  $('recordEditLiters').value=r.liters;
+  $('recordEditConsumption').textContent=r.quantity?fmtConsumption(r.quantity):'Primeiro registro / sem cálculo';
+  $('recordEditDialog').showModal();
+}
+function previewEditedConsumption(){
+  const id=$('recordEditId')?.value;
+  const r=state.records.find(x=>x.id===id);
+  if(!r) return;
+  const vehicleId=$('recordEditVehicle').value;
+  const date=$('recordEditDate').value;
+  const odo=Number($('recordEditOdometer').value);
+  const liters=Number($('recordEditLiters').value);
+  const candidates=visibleRecords()
+    .filter(x=>x.id!==id && x.vehicleId===vehicleId)
+    .concat([{...r,vehicleId,date,odometer:odo,liters}])
+    .sort((a,b)=>(a.date+(a.createdAt||'')).localeCompare(b.date+(b.createdAt||'')));
+  const idx=candidates.findIndex(x=>x.id===id);
+  const prev=idx>0?candidates[idx-1]:null;
+  let txt='Primeiro registro / sem cálculo';
+  if(prev && Number.isFinite(odo) && Number.isFinite(liters) && liters>0){
+    const distance=odo-Number(prev.odometer);
+    txt=distance>0?`${(distance/liters).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l`:'Confira o odômetro';
+  }
+  $('recordEditConsumption').textContent=txt;
+}
+$('correctionSearch')?.addEventListener('input',renderCorrections);
+$('correctionDate')?.addEventListener('change',renderCorrections);
+$('correctionStatus')?.addEventListener('change',renderCorrections);
+$('clearCorrectionFilters')?.addEventListener('click',()=>{
+  $('correctionSearch').value=''; $('correctionDate').value=''; $('correctionStatus').value='active'; renderCorrections();
+});
+$('closeRecordEditDialog')?.addEventListener('click',()=>$('recordEditDialog').close());
+$('recordEditDialog')?.addEventListener('click',e=>{ if(e.target===$('recordEditDialog')) $('recordEditDialog').close(); });
+$('recordEditVehicle')?.addEventListener('change',previewEditedConsumption);
+$('recordEditDate')?.addEventListener('change',previewEditedConsumption);
+$('recordEditOdometer')?.addEventListener('input',previewEditedConsumption);
+$('recordEditLiters')?.addEventListener('input',previewEditedConsumption);
+
+$('recordEditForm')?.addEventListener('submit',e=>{
+  e.preventDefault();
+  const id=$('recordEditId').value;
+  const r=state.records.find(x=>x.id===id && !x.deletedAt);
+  if(!r) return;
+  const newVehicle=getVehicle($('recordEditVehicle').value);
+  const odo=Number($('recordEditOdometer').value);
+  const liters=Number($('recordEditLiters').value);
+  const date=$('recordEditDate').value;
+  if(!newVehicle || newVehicle.deletedAt) return showToast('Selecione um veículo válido.');
+  if(!Number.isFinite(odo) || odo<0) return showToast('Confira o odômetro.');
+  if(!Number.isFinite(liters) || liters<=0) return showToast('Confira os litros.');
+  if(!date) return showToast('Informe a data.');
+
+  const oldVehicleId=r.vehicleId;
+  const now=new Date().toISOString();
+  r.vehicleId=newVehicle.id;
+  r.vehicle=newVehicle.name;
+  r.plate=newVehicle.plate;
+  r.odometer=odo;
+  r.liters=liters;
+  r.date=date;
+  r.updatedAt=now;
+  queueChange('record',r.id);
+
+  recalcVehicleConsumptions(oldVehicleId);
+  if(newVehicle.id!==oldVehicleId) recalcVehicleConsumptions(newVehicle.id);
+
+  $('recordEditDialog').close();
+  refreshAllViews();
+  renderCorrections();
+  showToast('Lançamento corrigido.');
+});
+
+document.addEventListener('click',e=>{
+  const edit=e.target.closest('[data-edit-record]');
+  if(edit){ openRecordEditDialog(edit.dataset.editRecord); return; }
+
+  const toggle=e.target.closest('[data-toggle-cancel-record]');
+  if(toggle){
+    const r=state.records.find(x=>x.id===toggle.dataset.toggleCancelRecord && !x.deletedAt);
+    if(!r) return;
+    const now=new Date().toISOString();
+    if(r.cancelledAt){
+      r.cancelledAt=null;
+      r.updatedAt=now;
+      queueChange('record',r.id);
+      recalcVehicleConsumptions(r.vehicleId);
+      showToast('Lançamento reativado.');
+    }else{
+      if(!confirm(`Cancelar o lançamento de ${r.vehicle} em ${fmtDate(r.date)}? Ele deixará de contar no histórico, consumo e PDF.`)) return;
+      r.cancelledAt=now;
+      r.updatedAt=now;
+      queueChange('record',r.id);
+      recalcVehicleConsumptions(r.vehicleId);
+      showToast('Lançamento cancelado.');
+    }
+    refreshAllViews(); renderCorrections();
+    return;
+  }
+
+  const del=e.target.closest('[data-delete-record]');
+  if(del){
+    const r=state.records.find(x=>x.id===del.dataset.deleteRecord && !x.deletedAt);
+    if(!r) return;
+    if(!confirm(`Excluir definitivamente este lançamento?\\n\\n${r.vehicle} • ${fmtDate(r.date)} • ${fmtKm(r.odometer)}\\n\\nEle será removido do uso normal e a exclusão será sincronizada com os outros aparelhos.`)) return;
+    const now=new Date().toISOString();
+    r.deletedAt=now; r.updatedAt=now; queueChange('record',r.id);
+    recalcVehicleConsumptions(r.vehicleId);
+    refreshAllViews(); renderCorrections();
+    showToast('Lançamento excluído.');
+  }
+});
 
 function oilCard(v,s){
   const change=latestOilChange(v.id);
@@ -420,14 +730,14 @@ function oilCard(v,s){
   </article>`;
 }
 function renderOil(){
-  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const list=activeVehicles().slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   $('oilList').innerHTML=list.length?list.map(v=>oilCard(v,oilStatus(v))).join(''):'<div class="empty">Nenhum veículo cadastrado.</div>';
 }
 
 function renderOilVehicleOptions(selected=''){
   const sel=$('oilVehicle');
   if(!sel) return;
-  const list=state.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const list=activeVehicles().slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   sel.innerHTML='<option value="">Selecione</option>'+list.map(v=>`<option value="${v.id}" ${selected===v.id?'selected':''}>${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
   const box=$('oilVehicleChoices');
   if(box){
@@ -587,7 +897,7 @@ function updateSyncUI(){
   }
 }
 function refreshAllViews(){
-  renderHome(); renderVehicles(); renderHistory(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||''); renderOilVehicleOptions($('oilVehicle')?.value||'');
+  renderHome(); renderVehicles(); renderHistory(); renderCorrections(); renderOil(); renderVehicleOptions(state.currentVehicleId||$('recordVehicle')?.value||''); renderOilVehicleOptions($('oilVehicle')?.value||'');
 }
 function exportBackup(){
   const backup={
@@ -763,7 +1073,7 @@ window.addEventListener('offline',()=>{ updateSyncUI(); showToast('Modo offline 
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.deferredPrompt=e; $('installBtn').classList.remove('hidden'); });
 $('installBtn')?.addEventListener('click',async()=>{ if(!state.deferredPrompt)return; state.deferredPrompt.prompt(); await state.deferredPrompt.userChoice; state.deferredPrompt=null; $('installBtn').classList.add('hidden'); });
 
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=13').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js?v=14').catch(()=>{})); }
 
 load();
 updateSyncUI();
@@ -771,7 +1081,7 @@ renderHome();
 renderVehicleOptions();
 if(navigator.onLine) setTimeout(()=>attemptCloudSync(false),250);
 setInterval(()=>{ if(navigator.onLine && cloudConfigured() && cloudAuthenticated()) attemptCloudSync(false); },60000);
-const initial=location.hash.replace('#',''); if(['home','record','menu','admin','vehicles','history','oil','oil-record'].includes(initial)) nav(initial); else nav('home');
+const initial=location.hash.replace('#',''); if(['home','record','menu','admin','vehicles','corrections','history','oil','oil-record'].includes(initial)) nav(initial); else nav('home');
 
 // ===== Relatório em PDF por período =====
 function monthStartISO(){
@@ -780,7 +1090,7 @@ function monthStartISO(){
 }
 function renderPdfVehicleOptions(){
   const sel=$('pdfVehicle');
-  sel.innerHTML='<option value="">Todos os veículos</option>'+state.vehicles
+  sel.innerHTML='<option value="">Todos os veículos</option>'+managedVehicles()
     .slice()
     .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
     .map(v=>`<option value="${v.id}">${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
@@ -803,7 +1113,7 @@ $('pdfForm').addEventListener('submit',e=>{
   const vehicleId=$('pdfVehicle').value;
   if(!start || !end) return showToast('Informe o período do relatório.');
   if(start>end) return showToast('A data inicial não pode ser maior que a final.');
-  const list=[...state.records]
+  const list=visibleRecords().slice()
     .filter(r=>r.date>=start && r.date<=end && (!vehicleId || r.vehicleId===vehicleId))
     .sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt));
   if(!list.length) return showToast('Não há registros nesse período.');
