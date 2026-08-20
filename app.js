@@ -170,3 +170,174 @@ load();
 renderHome();
 renderVehicleOptions();
 const initial=location.hash.replace('#',''); if(['home','record','vehicles','history','oil'].includes(initial)) nav(initial); else nav('home');
+
+// ===== Relatório em PDF por período =====
+function monthStartISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+}
+function renderPdfVehicleOptions(){
+  const sel=$('pdfVehicle');
+  sel.innerHTML='<option value="">Todos os veículos</option>'+state.vehicles
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+    .map(v=>`<option value="${v.id}">${escapeHTML(v.name)} — ${escapeHTML(v.plate)}</option>`).join('');
+}
+$('openPdfDialog').addEventListener('click',()=>{
+  renderPdfVehicleOptions();
+  $('pdfStartDate').value=monthStartISO();
+  $('pdfEndDate').value=todayISO();
+  $('pdfVehicle').value='';
+  $('pdfDialog').showModal();
+});
+$('closePdfDialog').addEventListener('click',()=>$('pdfDialog').close());
+$('pdfDialog').addEventListener('click',e=>{
+  if(e.target===$('pdfDialog')) $('pdfDialog').close();
+});
+$('pdfForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const start=$('pdfStartDate').value;
+  const end=$('pdfEndDate').value;
+  const vehicleId=$('pdfVehicle').value;
+  if(!start || !end) return showToast('Informe o período do relatório.');
+  if(start>end) return showToast('A data inicial não pode ser maior que a final.');
+  const list=[...state.records]
+    .filter(r=>r.date>=start && r.date<=end && (!vehicleId || r.vehicleId===vehicleId))
+    .sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt));
+  if(!list.length) return showToast('Não há registros nesse período.');
+  const vehicle=vehicleId ? getVehicle(vehicleId) : null;
+  try{
+    const bytes=buildFleetPdf(list,start,end,vehicle);
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`Oliveira_Frota_${fileDate(start)}_a_${fileDate(end)}${vehicle?`_${safeFilePart(vehicle.plate)}`:''}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    $('pdfDialog').close();
+    showToast('PDF gerado com sucesso.');
+  }catch(err){
+    console.error(err);
+    showToast('Não foi possível gerar o PDF.');
+  }
+});
+
+function fileDate(iso){
+  const [y,m,d]=iso.split('-'); return `${d}-${m}-${y}`;
+}
+function safeFilePart(s){ return String(s||'').replace(/[^A-Za-z0-9_-]+/g,'_'); }
+function pdfEsc(text){
+  const map={
+    '€':128,'‚':130,'ƒ':131,'„':132,'…':133,'†':134,'‡':135,'ˆ':136,'‰':137,'Š':138,'‹':139,'Œ':140,
+    'Ž':142,'‘':145,'’':146,'“':147,'”':148,'•':149,'–':150,'—':151,'˜':152,'™':153,'š':154,'›':155,
+    'œ':156,'ž':158,'Ÿ':159
+  };
+  let out='';
+  for(const ch of String(text??'')){
+    const cp=ch.codePointAt(0);
+    if(ch==='\\') out+='\\\\';
+    else if(ch==='(') out+='\\(';
+    else if(ch===')') out+='\\)';
+    else if(cp>=32 && cp<=126) out+=ch;
+    else {
+      const b=(cp>=160 && cp<=255) ? cp : map[ch];
+      out += Number.isInteger(b) ? `\\${b.toString(8).padStart(3,'0')}` : '?';
+    }
+  }
+  return out;
+}
+function pdfNum(n){ return Number(n).toFixed(2).replace(/\.00$/,''); }
+function rgb255(hex){
+  const h=hex.replace('#','');
+  return [parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255];
+}
+function pdfColor(hex,stroke=false){
+  const [r,g,b]=rgb255(hex); return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} ${stroke?'RG':'rg'}\n`;
+}
+function truncateText(s,max){
+  s=String(s??''); return s.length>max ? `${s.slice(0,Math.max(1,max-1))}…` : s;
+}
+function buildFleetPdf(records,start,end,vehicle){
+  const PW=841.89, PH=595.28, M=30;
+  const wine='#8F2E2F', gold='#C8922E', ink='#232323', muted='#666666', line='#D3D3D3', alt='#F5F5F5';
+  const rowsPerPage=24;
+  const pages=[];
+  const totalPages=Math.ceil(records.length/rowsPerPage);
+  const colWidths=[164,92,115,150,105,156];
+  const headers=['Veículo','Placa','Odômetro','Quant. por litro','Data','Troca de óleo'];
+  const xPositions=[M]; colWidths.forEach(w=>xPositions.push(xPositions[xPositions.length-1]+w));
+  const topToY=t=>PH-t;
+  const txt=(text,x,top,size=9,bold=false,color=ink)=>`${pdfColor(color)}BT /${bold?'F2':'F1'} ${size} Tf ${pdfNum(x)} ${pdfNum(topToY(top))} Td (${pdfEsc(text)}) Tj ET\n`;
+  const rect=(x,top,w,h,fill)=>`${pdfColor(fill)}${pdfNum(x)} ${pdfNum(PH-top-h)} ${pdfNum(w)} ${pdfNum(h)} re f\n`;
+  const hline=(x1,x2,top,color=line,width=.5)=>`${pdfColor(color,true)}${width} w ${pdfNum(x1)} ${pdfNum(topToY(top))} m ${pdfNum(x2)} ${pdfNum(topToY(top))} l S\n`;
+  const vline=(x,top1,top2,color=line,width=.5)=>`${pdfColor(color,true)}${width} w ${pdfNum(x)} ${pdfNum(topToY(top1))} m ${pdfNum(x)} ${pdfNum(topToY(top2))} l S\n`;
+  const vehicleLabel=vehicle ? `${vehicle.name} - ${vehicle.plate}` : 'Todos os veículos';
+
+  for(let p=0;p<totalPages;p++){
+    const slice=records.slice(p*rowsPerPage,(p+1)*rowsPerPage);
+    let c='';
+    c+=rect(M,22,PW-2*M,4,gold);
+    c+=txt('Oliveira Paisagismo e Locação',M,50,17,true,ink);
+    c+=txt('Controle de Veículos',M,69,10,true,wine);
+    c+=txt(`Período: ${fmtDate(start)} a ${fmtDate(end)}`,M,91,9,false,muted);
+    c+=txt(`Veículo: ${vehicleLabel}`,M,106,9,false,muted);
+    c+=txt(`Registros: ${records.length}`,PW-M-92,91,9,true,ink);
+
+    const tableTop=122, headH=24, rowH=17.2, tableW=colWidths.reduce((a,b)=>a+b,0);
+    c+=rect(M,tableTop,tableW,headH,wine);
+    for(let i=0;i<headers.length;i++){
+      c+=txt(headers[i],xPositions[i]+6,tableTop+16,8,true,'#FFFFFF');
+    }
+    slice.forEach((r,i)=>{
+      const top=tableTop+headH+i*rowH;
+      if(i%2===1) c+=rect(M,top,tableW,rowH,alt);
+      const vals=[
+        truncateText(r.vehicle,25),
+        truncateText(r.plate,12),
+        Number(r.odometer).toLocaleString('pt-BR'),
+        truncateText(r.quantity,22),
+        fmtDate(r.date),
+        Number(r.oil).toLocaleString('pt-BR')
+      ];
+      for(let k=0;k<vals.length;k++) c+=txt(vals[k],xPositions[k]+6,top+11.8,8,false,ink);
+      c+=hline(M,M+tableW,top+rowH,line,.45);
+    });
+    const tableBottom=tableTop+headH+slice.length*rowH;
+    for(const x of xPositions) c+=vline(x,tableTop,tableBottom,line,.45);
+    c+=vline(M+tableW,tableTop,tableBottom,line,.45);
+    c+=hline(M,M+tableW,tableTop,line,.45);
+    c+=hline(M,M+tableW,tableTop+headH,line,.45);
+
+    c+=hline(M,PW-M,PH-25,gold,.7);
+    c+=txt(`Página ${p+1} de ${totalPages}`,PW-M-76,PH-12,7,false,muted);
+    pages.push(c);
+  }
+
+  const objects=[];
+  objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  const pageIds=[];
+  for(let i=0;i<pages.length;i++) pageIds.push(5+i*2);
+  objects[2]=`<< /Type /Pages /Kids [${pageIds.map(id=>`${id} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+  objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  pages.forEach((stream,i)=>{
+    const pageId=5+i*2, contentId=pageId+1;
+    objects[pageId]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNum(PW)} ${pdfNum(PH)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`;
+    objects[contentId]=`<< /Length ${stream.length} >>\nstream\n${stream}endstream`;
+  });
+
+  let pdf='%PDF-1.4\n%OLIVEIRA\n';
+  const offsets=[0];
+  for(let i=1;i<objects.length;i++){
+    offsets[i]=pdf.length;
+    pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+  const xref=pdf.length;
+  pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for(let i=1;i<objects.length;i++) pdf+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+  pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new TextEncoder().encode(pdf);
+}

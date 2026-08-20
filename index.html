@@ -101,8 +101,9 @@
       </section>
 
       <section id="view-history" class="view" data-view="history">
-        <div class="page-head">
+        <div class="page-head split">
           <div><span class="eyebrow">CONSULTA</span><h2>Histórico</h2></div>
+          <button id="openPdfDialog" class="btn btn-primary" type="button">Gerar PDF</button>
         </div>
         <div class="card filters-card">
           <div class="form-grid three-cols">
@@ -144,6 +145,23 @@
       <label class="field"><span>Veículo</span><input id="vehicleName" type="text" required placeholder="Ex.: Hilux" /></label>
       <label class="field"><span>Placa</span><input id="vehiclePlate" type="text" required maxlength="8" placeholder="ABC1D23" /></label>
       <button type="submit" class="btn btn-primary btn-block">Salvar veículo</button>
+    </form>
+  </dialog>
+
+
+  <dialog id="pdfDialog" class="dialog">
+    <form id="pdfForm" class="dialog-card" autocomplete="off">
+      <div class="dialog-head">
+        <div><span class="eyebrow">RELATÓRIO</span><h3>Gerar PDF por período</h3></div>
+        <button type="button" class="icon-btn" id="closePdfDialog" aria-label="Fechar">×</button>
+      </div>
+      <div class="form-grid two-cols">
+        <label class="field"><span>Data inicial</span><input id="pdfStartDate" type="date" required /></label>
+        <label class="field"><span>Data final</span><input id="pdfEndDate" type="date" required /></label>
+      </div>
+      <label class="field"><span>Veículo</span><select id="pdfVehicle"><option value="">Todos os veículos</option></select></label>
+      <p class="dialog-note">O arquivo será gerado em A4 paisagem com os mesmos campos do controle de veículos.</p>
+      <button type="submit" class="btn btn-primary btn-block">Salvar PDF</button>
     </form>
   </dialog>
 
