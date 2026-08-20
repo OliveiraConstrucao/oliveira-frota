@@ -1616,7 +1616,7 @@ function offerInstallOnFirstVisit(){
 }
 
 // ===== Atualização automática do PWA =====
-const OLIVEIRA_APP_VERSION='29';
+const OLIVEIRA_APP_VERSION='30';
 
 function registerAutoUpdatingServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
@@ -1733,8 +1733,8 @@ function clearCurrentPdfPreview(){
     URL.revokeObjectURL(currentPdfPreview.url);
   }
   currentPdfPreview=null;
-  const frame=$('pdfPreviewFrame');
-  if(frame) frame.removeAttribute('src');
+  const content=$('pdfPreviewContent');
+  if(content) content.innerHTML='';
 }
 function downloadCurrentPdf(){
   if(!currentPdfPreview) return showToast('Gere o relatório primeiro.');
@@ -1778,6 +1778,97 @@ async function shareCurrentPdf(){
   }
 }
 
+
+function renderPdfPreview(list,start,end,vehicle){
+  const host=$('pdfPreviewContent');
+  if(!host) return;
+
+  const vehicleLabel=vehicle ? `${vehicle.name} - ${vehicle.plate}` : 'Todos os veículos';
+  const rows=list.map(r=>{
+    const oil=r.oil ? Number(r.oil).toLocaleString('pt-BR') : '—';
+    const operator=recordOperator(r);
+    return {
+      vehicle:r.vehicle||'—',
+      plate:r.plate||'—',
+      odometer:Number(r.odometer).toLocaleString('pt-BR'),
+      quantity:fmtConsumptionValue(r.quantity),
+      date:fmtDate(r.date),
+      oil,
+      operator
+    };
+  });
+
+  const desktopRows=rows.map(r=>`
+    <tr>
+      <td>${escapeHTML(r.vehicle)}</td>
+      <td>${escapeHTML(r.plate)}</td>
+      <td>${escapeHTML(r.odometer)}</td>
+      <td>${escapeHTML(r.quantity)}</td>
+      <td>${escapeHTML(r.date)}</td>
+      <td>${escapeHTML(r.oil)}</td>
+      <td>${escapeHTML(r.operator)}</td>
+    </tr>`).join('');
+
+  const mobileCards=rows.map((r,i)=>`
+    <article class="pdf-mobile-record">
+      <div class="pdf-mobile-record-head">
+        <div>
+          <span>Registro ${i+1}</span>
+          <strong>${escapeHTML(r.vehicle)}</strong>
+        </div>
+        <b>${escapeHTML(r.plate)}</b>
+      </div>
+      <div class="pdf-mobile-record-grid">
+        <div><span>Odômetro</span><strong>${escapeHTML(r.odometer)} km</strong></div>
+        <div><span>Quant. por litro</span><strong>${escapeHTML(r.quantity)}</strong></div>
+        <div><span>Data</span><strong>${escapeHTML(r.date)}</strong></div>
+        <div><span>Troca de óleo</span><strong>${escapeHTML(r.oil)}${r.oil==='—'?'':' km'}</strong></div>
+        <div class="pdf-mobile-operator"><span>Responsável</span><strong>${escapeHTML(r.operator)}</strong></div>
+      </div>
+    </article>`).join('');
+
+  host.innerHTML=`
+    <section class="pdf-screen-report">
+      <header class="pdf-screen-report-head">
+        <div class="pdf-screen-gold-line"></div>
+        <div class="pdf-screen-head-row">
+          <div>
+            <h4>Oliveira Paisagismo e Locação</h4>
+            <strong>Controle de Veículos</strong>
+          </div>
+          <div class="pdf-screen-count">Registros: <b>${rows.length}</b></div>
+        </div>
+        <div class="pdf-screen-meta">
+          <span>Período: <b>${fmtDate(start)} a ${fmtDate(end)}</b></span>
+          <span>Veículo: <b>${escapeHTML(vehicleLabel)}</b></span>
+        </div>
+      </header>
+
+      <div class="pdf-desktop-preview">
+        <div class="pdf-screen-table-wrap">
+          <table class="pdf-screen-table">
+            <thead>
+              <tr>
+                <th>Veículo</th>
+                <th>Placa</th>
+                <th>Odômetro</th>
+                <th>Quant. por litro</th>
+                <th>Data</th>
+                <th>Troca de óleo</th>
+                <th>Responsável</th>
+              </tr>
+            </thead>
+            <tbody>${desktopRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pdf-mobile-preview">
+        ${mobileCards}
+      </div>
+    </section>`;
+}
+
 $('pdfForm').addEventListener('submit',e=>{
   e.preventDefault();
   const start=$('pdfStartDate').value;
@@ -1810,7 +1901,7 @@ $('pdfForm').addEventListener('submit',e=>{
       shareText:`Oliveira Frota - ${fmtDate(start)} a ${fmtDate(end)} - ${vehicleLabel}`
     };
 
-    $('pdfPreviewFrame').src=url;
+    renderPdfPreview(list,start,end,vehicle);
     $('pdfPreviewSubtitle').textContent=`${fmtDate(start)} a ${fmtDate(end)} • ${vehicleLabel} • ${list.length} registro(s)`;
     $('pdfDialog').close();
     $('pdfPreviewDialog').showModal();

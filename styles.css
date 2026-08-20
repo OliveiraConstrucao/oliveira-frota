@@ -1431,3 +1431,384 @@ body.splash-lock{
     min-width:860px;
   }
 }
+
+
+/* =========================================================
+   V30 - PREVIA RESPONSIVA DO PDF + MANUAL MOBILE CORRIGIDO
+   ========================================================= */
+
+/* ---------- PREVIA DO RELATORIO ---------- */
+.pdf-preview-dialog{
+  width:min(1180px,calc(100vw - 18px));
+  max-width:none;
+}
+.pdf-preview-card{
+  width:min(1160px,calc(100vw - 22px));
+  max-height:calc(100vh - 28px);
+  overflow:auto;
+}
+.pdf-preview-content{
+  width:100%;
+  min-height:260px;
+}
+.pdf-screen-report{
+  background:#fff;
+  border:1px solid #d7d7d3;
+  border-radius:14px;
+  padding:20px 22px;
+}
+.pdf-screen-gold-line{
+  height:5px;
+  background:#c8922e;
+  margin-bottom:12px;
+}
+.pdf-screen-head-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+.pdf-screen-head-row h4{
+  margin:0;
+  font-size:21px;
+  color:#232323;
+}
+.pdf-screen-head-row>div>strong{
+  display:block;
+  margin-top:3px;
+  font-size:12px;
+  color:#8f2e2f;
+}
+.pdf-screen-count{
+  font-size:12px;
+  color:#333;
+  white-space:nowrap;
+}
+.pdf-screen-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 22px;
+  margin:12px 0 14px;
+  color:#666;
+  font-size:12px;
+}
+.pdf-screen-table-wrap{
+  overflow:auto;
+  border:1px solid #d3d3d3;
+}
+.pdf-screen-table{
+  width:100%;
+  min-width:900px;
+  border-collapse:collapse;
+}
+.pdf-screen-table th{
+  background:#8f2e2f;
+  color:#fff;
+  padding:10px 9px;
+  text-align:left;
+  font-size:11px;
+  white-space:nowrap;
+}
+.pdf-screen-table td{
+  padding:9px;
+  font-size:11px;
+  border-right:1px solid #d8d8d8;
+  border-bottom:1px solid #d8d8d8;
+  white-space:nowrap;
+}
+.pdf-screen-table tbody tr:nth-child(even){
+  background:#f5f5f5;
+}
+.pdf-mobile-preview{
+  display:none;
+}
+.pdf-preview-actions{
+  position:sticky;
+  bottom:0;
+  z-index:3;
+  background:#fff;
+  padding-top:12px;
+  margin-top:0;
+}
+
+/* ---------- MANUAL ---------- */
+.manual-hero p{
+  font-size:16px;
+}
+.manual-topic summary{
+  grid-template-columns:48px minmax(0,1fr) 22px;
+  min-width:0;
+  gap:12px;
+  padding:15px 16px;
+}
+.manual-topic summary>span:nth-child(2){
+  min-width:0;
+}
+.manual-topic-icon{
+  width:48px;
+  height:48px;
+  font-size:25px;
+}
+.manual-topic summary strong{
+  font-size:18px;
+  line-height:1.25;
+}
+.manual-topic summary small{
+  font-size:14px;
+  line-height:1.4;
+}
+.manual-topic-body{
+  padding:18px 16px;
+}
+.manual-steps{
+  gap:16px;
+}
+.manual-steps li{
+  grid-template-columns:42px minmax(0,1fr);
+  column-gap:12px;
+  row-gap:3px;
+  min-width:0;
+}
+.manual-steps li::before{
+  width:38px;
+  height:38px;
+  font-size:15px;
+  grid-column:1;
+  grid-row:1 / span 2;
+}
+.manual-steps li b{
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+  font-size:16px;
+  line-height:1.35;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.manual-steps li>span{
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+  margin-top:1px;
+  font-size:15px;
+  line-height:1.5;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.manual-text,
+.manual-list{
+  font-size:15px;
+  line-height:1.6;
+}
+.manual-tip,
+.manual-warning{
+  font-size:14px;
+  line-height:1.5;
+  padding:12px 13px;
+}
+.manual-footer-note{
+  font-size:14px;
+  line-height:1.55;
+}
+.manual-shortcut strong{
+  font-size:17px;
+}
+
+/* ---------- MOBILE ---------- */
+@media(max-width:560px){
+  .pdf-preview-dialog{
+    width:calc(100vw - 8px);
+    margin:auto;
+  }
+  .pdf-preview-card{
+    width:calc(100vw - 12px);
+    max-height:calc(100vh - 14px);
+    padding:12px 11px;
+    border-radius:15px;
+  }
+  .pdf-preview-head{
+    margin-bottom:10px;
+  }
+  .pdf-preview-head h3{
+    font-size:22px;
+  }
+  .pdf-preview-head p{
+    font-size:13px;
+    line-height:1.4;
+  }
+  .pdf-screen-report{
+    padding:14px 12px;
+    border-radius:12px;
+  }
+  .pdf-screen-head-row{
+    display:block;
+  }
+  .pdf-screen-head-row h4{
+    font-size:18px;
+  }
+  .pdf-screen-count{
+    margin-top:7px;
+  }
+  .pdf-screen-meta{
+    display:block;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .pdf-screen-meta span{
+    display:block;
+  }
+  .pdf-desktop-preview{
+    display:none;
+  }
+  .pdf-mobile-preview{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .pdf-mobile-record{
+    border:1px solid #dfdfdc;
+    border-radius:13px;
+    overflow:hidden;
+    background:#fff;
+  }
+  .pdf-mobile-record-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+    padding:11px 12px;
+    background:#8f2e2f;
+    color:#fff;
+  }
+  .pdf-mobile-record-head span{
+    display:block;
+    font-size:10px;
+    opacity:.8;
+    text-transform:uppercase;
+    font-weight:800;
+  }
+  .pdf-mobile-record-head strong{
+    display:block;
+    margin-top:2px;
+    font-size:16px;
+    line-height:1.25;
+  }
+  .pdf-mobile-record-head>b{
+    font-size:12px;
+    white-space:nowrap;
+    background:rgba(255,255,255,.16);
+    border-radius:999px;
+    padding:5px 7px;
+  }
+  .pdf-mobile-record-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+  }
+  .pdf-mobile-record-grid>div{
+    min-width:0;
+    padding:11px 12px;
+    border-bottom:1px solid #ecece9;
+  }
+  .pdf-mobile-record-grid>div:nth-child(odd){
+    border-right:1px solid #ecece9;
+  }
+  .pdf-mobile-record-grid span{
+    display:block;
+    color:#777;
+    font-size:11px;
+    margin-bottom:3px;
+  }
+  .pdf-mobile-record-grid strong{
+    display:block;
+    font-size:14px;
+    line-height:1.35;
+    color:#272727;
+    overflow-wrap:anywhere;
+  }
+  .pdf-mobile-operator{
+    grid-column:1 / -1;
+    border-right:0!important;
+  }
+  .pdf-preview-actions{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .pdf-preview-actions .btn{
+    font-size:13px;
+    min-height:48px;
+    padding:10px 7px;
+  }
+
+  .manual-hero{
+    padding:18px 15px;
+  }
+  .manual-hero h2{
+    font-size:27px;
+    line-height:1.15;
+  }
+  .manual-hero p{
+    font-size:16px;
+    line-height:1.5;
+  }
+  .manual-topic summary{
+    grid-template-columns:46px minmax(0,1fr) 20px;
+    gap:10px;
+    padding:14px 12px;
+  }
+  .manual-topic-icon{
+    width:46px;
+    height:46px;
+    font-size:24px;
+  }
+  .manual-topic summary strong{
+    font-size:17px;
+  }
+  .manual-topic summary small{
+    font-size:13px;
+    margin-top:4px;
+  }
+  .manual-topic-body{
+    padding:16px 13px 17px;
+  }
+  .manual-steps li{
+    grid-template-columns:40px minmax(0,1fr);
+    column-gap:11px;
+  }
+  .manual-steps li::before{
+    width:36px;
+    height:36px;
+    font-size:15px;
+  }
+  .manual-steps li b{
+    font-size:16px;
+  }
+  .manual-steps li>span{
+    font-size:15px;
+    line-height:1.5;
+  }
+  .manual-text,
+  .manual-list{
+    font-size:15px;
+    line-height:1.6;
+  }
+  .manual-list{
+    padding-left:22px;
+  }
+  .manual-tip,
+  .manual-warning{
+    font-size:14px;
+  }
+}
+
+@media(max-width:360px){
+  .pdf-preview-actions{
+    grid-template-columns:1fr;
+  }
+  .pdf-mobile-record-grid{
+    grid-template-columns:1fr;
+  }
+  .pdf-mobile-record-grid>div{
+    border-right:0!important;
+  }
+}

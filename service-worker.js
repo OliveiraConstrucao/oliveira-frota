@@ -1,4 +1,4 @@
-const CACHE='oliveira-frota-v29-identificacao-aparelho';
+const CACHE='oliveira-frota-v30-preview-manual';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./firebase-config.js','./cloud-sync.js','./manifest.webmanifest','./assets/logo-oliveira.png','./assets/oliveira-frota-banner.png','./assets/icons/icon-192.png','./assets/icons/icon-512.png','./assets/icons/favicon.png'];
 
 self.addEventListener('message',e=>{

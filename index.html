@@ -32,7 +32,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=29" />
+  <link rel="stylesheet" href="styles.css?v=30" />
 </head>
 <body>
   <div id="openingSplash" class="opening-splash" aria-hidden="true">
@@ -672,21 +672,19 @@
       <div class="pdf-preview-head">
         <div>
           <span class="eyebrow">RELATÓRIO</span>
-          <h3>Visualização do PDF</h3>
+          <h3>Prévia do PDF</h3>
           <p id="pdfPreviewSubtitle">—</p>
         </div>
         <button type="button" class="icon-btn" id="closePdfPreviewDialog" aria-label="Fechar">×</button>
       </div>
 
-      <div class="pdf-preview-frame-wrap">
-        <iframe id="pdfPreviewFrame" title="Visualização do relatório PDF"></iframe>
-      </div>
+      <div id="pdfPreviewContent" class="pdf-preview-content" aria-live="polite"></div>
 
       <div class="pdf-preview-actions">
         <button id="sharePdfBtn" class="btn btn-primary" type="button">Compartilhar PDF</button>
         <button id="downloadPdfBtn" class="btn btn-secondary" type="button">Baixar PDF</button>
       </div>
-      <p id="pdfShareHelp" class="dialog-note">No celular, o botão Compartilhar abre as opções disponíveis no aparelho quando o navegador permite compartilhar arquivos.</p>
+      <p id="pdfShareHelp" class="dialog-note">A prévia é adaptada à tela. O arquivo compartilhado ou baixado continua em PDF A4 paisagem.</p>
     </div>
   </dialog>
 
@@ -883,6 +881,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="firebase-config.js?v=13" defer></script>
   <script src="cloud-sync.js?v=13" defer></script>
-  <script src="app.js?v=29" defer></script>
+  <script src="app.js?v=30" defer></script>
 </body>
 </html>
