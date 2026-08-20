@@ -5,6 +5,10 @@ const $ = (id) => document.getElementById(id);
 const todayISO = () => new Date().toISOString().slice(0,10);
 const fmtDate = (iso) => iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—';
 const fmtKm = (n) => Number.isFinite(Number(n)) ? `${Number(n).toLocaleString('pt-BR')} km` : '—';
+const fmtLiters = (n) => Number.isFinite(Number(n)) ? `${Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L` : '—';
+const consumptionNumber = (v) => { const n=Number(String(v??'').replace(',','.')); return Number.isFinite(n) ? n : null; };
+const fmtConsumption = (v) => { const n=consumptionNumber(v); return n===null ? (String(v||'').trim() || '—') : `${n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l`; };
+const fmtConsumptionValue = (v) => { const n=consumptionNumber(v); return n===null ? (String(v||'').trim() || '—') : n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 const escapeHTML = (s='') => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
@@ -72,34 +76,71 @@ function updatePlate(){
 function prepRecord(vehicleId=null){
   renderVehicleOptions(vehicleId || state.currentVehicleId || '');
   $('recordDate').value=todayISO();
+  $('recordOdometer').value='';
+  $('recordLiters').value='';
+  $('recordQuantity').value='';
   $('recordWarning').classList.add('hidden');
-  if(vehicleId){ const r=lastRecord(vehicleId); if(r) $('recordOil').value=r.oil || ''; }
+  const selectedId=vehicleId || state.currentVehicleId || $('recordVehicle').value;
+  const r=lastRecord(selectedId);
+  $('recordOil').value=r?.oil || '';
+  updateConsumption();
 }
 $('recordVehicle').addEventListener('change',()=>{
   updatePlate();
   const r=lastRecord($('recordVehicle').value);
   $('recordOil').value=r?.oil || '';
   checkOdometer();
+  updateConsumption();
 });
-$('recordOdometer').addEventListener('input',checkOdometer);
+$('recordOdometer').addEventListener('input',()=>{ checkOdometer(); updateConsumption(); });
+$('recordLiters').addEventListener('input',updateConsumption);
 function checkOdometer(){
-  const vid=$('recordVehicle').value, val=Number($('recordOdometer').value), r=lastRecord(vid), box=$('recordWarning');
-  if(r && Number.isFinite(val) && val < Number(r.odometer)){
-    box.textContent=`O odômetro informado é menor que o último registro (${Number(r.odometer).toLocaleString('pt-BR')} km). Confira antes de salvar.`;
+  const vid=$('recordVehicle').value, raw=$('recordOdometer').value, val=Number(raw), r=lastRecord(vid), box=$('recordWarning');
+  if(r && raw!=='' && Number.isFinite(val) && val <= Number(r.odometer)){
+    box.textContent=`O odômetro deve ser maior que o último registro (${Number(r.odometer).toLocaleString('pt-BR')} km) para calcular o consumo.`;
     box.classList.remove('hidden');
   } else box.classList.add('hidden');
+}
+function updateConsumption(){
+  const vid=$('recordVehicle').value;
+  const odoRaw=$('recordOdometer').value;
+  const litersRaw=$('recordLiters').value;
+  const odo=Number(odoRaw), liters=Number(litersRaw), prev=lastRecord(vid);
+  const out=$('recordQuantity'), help=$('recordConsumptionHelp');
+  out.value='';
+  help.classList.remove('consumption-ready');
+  help.classList.add('consumption-pending');
+  if(!vid){ help.textContent='Selecione um veículo para calcular o consumo.'; return null; }
+  if(!prev){ help.textContent='Primeiro registro do veículo: o consumo será calculado a partir do próximo abastecimento.'; return null; }
+  if(odoRaw==='' || litersRaw==='' || !Number.isFinite(odo) || !Number.isFinite(liters) || liters<=0){
+    help.textContent='Informe o odômetro atual e os litros abastecidos.'; return null;
+  }
+  const distance=odo-Number(prev.odometer);
+  if(distance<=0){ help.textContent='O odômetro atual precisa ser maior que o último registro.'; return null; }
+  const kmL=distance/liters;
+  out.value=kmL.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  help.textContent=`Cálculo: ${distance.toLocaleString('pt-BR')} km ÷ ${liters.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} L = ${kmL.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km/l.`;
+  help.classList.remove('consumption-pending');
+  help.classList.add('consumption-ready');
+  return kmL;
 }
 $('recordForm').addEventListener('submit',e=>{
   e.preventDefault();
   const v=getVehicle($('recordVehicle').value); if(!v) return showToast('Selecione um veículo.');
-  const odo=Number($('recordOdometer').value); const prev=lastRecord(v.id);
-  if(prev && odo < Number(prev.odometer)) return showToast('Confira o odômetro antes de salvar.');
+  const odo=Number($('recordOdometer').value);
+  const liters=Number($('recordLiters').value);
+  const prev=lastRecord(v.id);
+  if(!Number.isFinite(liters) || liters<=0) return showToast('Informe os litros abastecidos.');
+  if(prev && odo <= Number(prev.odometer)) return showToast('O odômetro deve ser maior que o último registro.');
+  const consumption=updateConsumption();
   state.records.push({
     id:uuid(), vehicleId:v.id, vehicle:v.name, plate:v.plate,
-    odometer:odo, quantity:$('recordQuantity').value.trim(), date:$('recordDate').value,
+    odometer:odo, liters, quantity:consumption===null?'':consumption.toFixed(2), date:$('recordDate').value,
     oil:Number($('recordOil').value), createdAt:new Date().toISOString()
   });
-  save(); e.target.reset(); state.currentVehicleId=v.id; showToast('Registro salvo.'); renderHome(); prepRecord(v.id);
+  save(); e.target.reset(); state.currentVehicleId=v.id;
+  showToast(consumption===null?'Primeiro abastecimento salvo. O consumo será calculado no próximo.':'Abastecimento salvo com consumo calculado.');
+  renderHome(); prepRecord(v.id);
 });
 
 function renderVehicles(){
@@ -120,7 +161,8 @@ window.openVehicleDetail=(id)=>{
     <div class="detail-top"><div><span class="eyebrow">VEÍCULO</span><h2>${escapeHTML(v.name)}</h2><div class="plate">${escapeHTML(v.plate)}</div></div><span class="badge ${s.type==='none'?'':s.type}">${escapeHTML(s.label)}</span></div>
     <div class="detail-grid">
       <div class="detail-box"><span>Último odômetro</span><strong>${r?fmtKm(r.odometer):'—'}</strong></div>
-      <div class="detail-box"><span>Quant. por litro</span><strong>${r?escapeHTML(r.quantity):'—'}</strong></div>
+      <div class="detail-box"><span>Litros abastecidos</span><strong>${r?fmtLiters(r.liters):'—'}</strong></div>
+      <div class="detail-box"><span>Quant. por litro</span><strong>${r?escapeHTML(fmtConsumption(r.quantity)):'—'}</strong></div>
       <div class="detail-box"><span>Última data</span><strong>${r?fmtDate(r.date):'—'}</strong></div>
       <div class="detail-box"><span>Troca de óleo</span><strong>${r?fmtKm(r.oil):'—'}</strong></div>
     </div>
@@ -145,7 +187,8 @@ function historyCard(r){
     <div class="list-card-main"><h4>${escapeHTML(r.vehicle)} <span class="plate">${escapeHTML(r.plate)}</span></h4><p>${fmtDate(r.date)}</p></div>
     <div class="history-values">
       <div><span class="muted">Odômetro</span><strong>${fmtKm(r.odometer)}</strong></div>
-      <div><span class="muted">Quant./litro</span><strong>${escapeHTML(r.quantity)}</strong></div>
+      <div><span class="muted">Litros</span><strong>${fmtLiters(r.liters)}</strong></div>
+      <div><span class="muted">Quant./litro</span><strong>${escapeHTML(fmtConsumption(r.quantity))}</strong></div>
       <div><span class="muted">Troca óleo</span><strong>${fmtKm(r.oil)}</strong></div>
     </div>
   </article>`;
@@ -298,7 +341,7 @@ function buildFleetPdf(records,start,end,vehicle){
         truncateText(r.vehicle,25),
         truncateText(r.plate,12),
         Number(r.odometer).toLocaleString('pt-BR'),
-        truncateText(r.quantity,22),
+        truncateText(fmtConsumptionValue(r.quantity),22),
         fmtDate(r.date),
         Number(r.oil).toLocaleString('pt-BR')
       ];
